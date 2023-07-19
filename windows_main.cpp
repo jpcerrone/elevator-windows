@@ -1,12 +1,8 @@
 #include <Windows.h>
 #include <cstdint>
-#include "game.cpp"
+#include "game.c"
+#include "vector2i.c"
 static bool gameRunning;
-
-struct Vector2 {
-    int x;
-    int y;
-};
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -35,20 +31,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
     gameRunning = true;
 
-    Vector2 resolution = { 640, 704 };
-    Vector2 origin = { (1920 - resolution.x)/2, (1080 - resolution.y) / 2 }; // TODO: query screen resolution instead of hardcoding 1920x1080.
+    Vector2i nativeRes = { 160, 176 };
+    int scalingFactor = 4;
+
+    Vector2i screenRes = { nativeRes.width * scalingFactor, nativeRes.height * scalingFactor };
+    Vector2i origin = { (1920 - screenRes.width)/2, (1080 - screenRes.height) / 2 }; // TODO: query screen resolution instead of hardcoding 1920x1080.
     BITMAPINFO bitmapInfo;
     BITMAPINFOHEADER bmInfoHeader = {};
     bmInfoHeader.biSize = sizeof(bmInfoHeader);
     bmInfoHeader.biCompression = BI_RGB;
-    bmInfoHeader.biWidth = resolution.x;
-    bmInfoHeader.biHeight = -resolution.y; // Negative means it'll be filled top-down
+    bmInfoHeader.biWidth = nativeRes.width;
+    bmInfoHeader.biHeight = -nativeRes.height; // Negative means it'll be filled top-down
     bmInfoHeader.biPlanes = 1;       // MSDN sais it must be set to 1, legacy reasons
     bmInfoHeader.biBitCount = 32;    // R+G+B+padding each 8bits
     bitmapInfo.bmiHeader = bmInfoHeader;
 
     void* bitMapMemory;
-    bitMapMemory = VirtualAlloc(0, resolution.x * resolution.y * 4 /*(32bits for color)*/, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    bitMapMemory = VirtualAlloc(0, nativeRes.width * nativeRes.height * 4 /*(4Bytes(32b) for color)*/, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 	// Register the window class.
 	const wchar_t CLASS_NAME[] = L"Elevator";
@@ -62,9 +61,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	RegisterClass(&wc);
     RECT desiredClientSize;
     desiredClientSize.left = 0;
-    desiredClientSize.right = resolution.x;
+    desiredClientSize.right = screenRes.width;
     desiredClientSize.top = 0;
-    desiredClientSize.bottom = resolution.y;
+    desiredClientSize.bottom = screenRes.height;
 
     DWORD windowStyles = (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX);
     AdjustWindowRectEx(&desiredClientSize, windowStyles, false, 0);
@@ -106,8 +105,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
 
             // Render
-            updateAndRender(bitMapMemory, resolution.x, resolution.y);
-            StretchDIBits(windowDeviceContext, 0, 0, resolution.x, resolution.y, 0, 0, resolution.x, resolution.y, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height);
+            StretchDIBits(windowDeviceContext, 0, 0, screenRes.width, screenRes.height, 0, 0,
+                nativeRes.width, nativeRes.height, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
         }
     }
 

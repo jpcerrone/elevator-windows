@@ -18,5 +18,5 @@
 $COMMON_FLAGS = "/Febin\ /Fdbin\ /Fobin\ /nologo -W4 -Oi -Od -GR -EHa -wd4100 -wd4201"
 $COMMON_LIBS = "User32.lib Gdi32.lib"
 
-$compileGame = "cl -Zi .\windows_main.cpp $COMMON_FLAGS /LD /link $COMMON_LIBS /INCREMENTAL:NO"
+$compileGame = "cl -Zi .\windows_main.cpp $COMMON_FLAGS /link $COMMON_LIBS /INCREMENTAL:NO"
 Invoke-Expression $compileGame
