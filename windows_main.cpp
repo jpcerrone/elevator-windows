@@ -86,13 +86,52 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         ShowWindow(hwnd, nShowCmd);
 
+        GameMemory memory;
+        memory.isInitialized = false;
+
         while (gameRunning) {
 
             // Process Messages
             MSG msg = { };
+            GameInput newInput = {};
             while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
             {
+                WPARAM key = msg.wParam;
+                
                 switch (msg.message) {
+                case WM_KEYDOWN: {
+                    bool wasDown = msg.lParam & (1 << 30);
+                    if (!wasDown) {
+                        if (key == VK_NUMPAD9 || key == '9') {
+                            newInput.button9 = true;
+                        }                    
+                        if (key == VK_NUMPAD8 || key == '8') {
+                            newInput.button8 = true;
+                        }                    
+                        if (key == VK_NUMPAD7 || key == '7') {
+                            newInput.button7 = true;
+                        }                    
+                        if (key == VK_NUMPAD6 || key == '6') {
+                            newInput.button6 = true;
+                        }                    
+                        if (key == VK_NUMPAD5 || key == '5') {
+                            newInput.button5 = true;
+                        }                    
+                        if (key == VK_NUMPAD4 || key == '4') {
+                            newInput.button4 = true;
+                        }                    
+                        if (key == VK_NUMPAD3 || key == '3') {
+                            newInput.button3 = true;
+                        }                    
+                        if (key == VK_NUMPAD2 || key == '2') {
+                            newInput.button2 = true;
+                        }
+                        if (key == VK_NUMPAD1 || key == '1') {
+                            newInput.button1 = true;
+                        }                    
+                    }
+
+                } break;
                 case WM_QUIT: {
                     gameRunning = false;
                 } break;
@@ -105,7 +144,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             }
 
             // Render
-            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height);
+            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &memory);
             StretchDIBits(windowDeviceContext, 0, 0, screenRes.width, screenRes.height, 0, 0,
                 nativeRes.width, nativeRes.height, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
         }
