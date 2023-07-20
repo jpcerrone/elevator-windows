@@ -94,7 +94,7 @@ struct GameMemory {
     ButtonStates buttonStates;
 };
 
-void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameMemory *memory) {
+void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameMemory *memory, float delta) {
     if (!memory->isInitialized) {
         memory->isInitialized = true;
         memory->buttonStates = {};
@@ -110,7 +110,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         }
     }
 
-#if DEBUG
+#if SHOWBUTTONSTATES
     char buttonsString[10];
     for (int i = 0; i < 9; i++) {
         if (memory->buttonStates.buttons[i]) {

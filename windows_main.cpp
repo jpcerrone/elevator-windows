@@ -1,8 +1,22 @@
 #include <Windows.h>
 #include <cstdint>
+
 #include "game.c"
 #include "vector2i.c"
+#include "assertions.h"
+static const int desiredFPS = 60;
+
 static bool gameRunning;
+
+LARGE_INTEGER getEndPerformanceCount() {
+    LARGE_INTEGER endPerformanceCount;
+    QueryPerformanceCounter(&endPerformanceCount);
+    return endPerformanceCount;
+}
+
+float getEllapsedSeconds(LARGE_INTEGER endPerformanceCount, LARGE_INTEGER startPerformanceCount, LARGE_INTEGER performanceFrequency) {
+    return ((float)(endPerformanceCount.QuadPart - startPerformanceCount.QuadPart) / (float)performanceFrequency.QuadPart);
+}
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -30,6 +44,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     gameRunning = true;
+
+    MMRESULT canQueryEveryMs = timeBeginPeriod(1);
+    Assert(canQueryEveryMs == TIMERR_NOERROR);
 
     Vector2i nativeRes = { 160, 176 };
     int scalingFactor = 4;
@@ -89,6 +106,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         GameMemory memory;
         memory.isInitialized = false;
 
+        // Timing
+        LARGE_INTEGER startPerformanceCount;
+        QueryPerformanceCounter(&startPerformanceCount);
+        LARGE_INTEGER performanceFrequency;
+        QueryPerformanceFrequency(&performanceFrequency);
+
         while (gameRunning) {
 
             // Process Messages
@@ -142,11 +165,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 }
 
             }
-
+            float delta = 1.0f / (float)desiredFPS;
             // Render
-            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &memory);
+            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &memory, delta);
             StretchDIBits(windowDeviceContext, 0, 0, screenRes.width, screenRes.height, 0, 0,
                 nativeRes.width, nativeRes.height, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+
+            // Timing
+            LARGE_INTEGER endPerformanceCount = getEndPerformanceCount();
+            float elapsedSeconds = getEllapsedSeconds(endPerformanceCount, startPerformanceCount, performanceFrequency);
+#ifdef SHOWFPS
+            char outB4[256];
+            _snprintf_s(outB4, sizeof(outB4), "Frame required time: %0.01fms. ", elapsedSeconds * 1000);
+            OutputDebugString(outB4);
+#endif
+            float desiredFrameTimeInS = 1.0f / desiredFPS;
+            if (elapsedSeconds < desiredFrameTimeInS) {
+                DWORD timeToSleep = (DWORD)(1000.0f * (desiredFrameTimeInS - elapsedSeconds));
+                Sleep(timeToSleep);
+                while (elapsedSeconds < desiredFrameTimeInS) {
+                    endPerformanceCount = getEndPerformanceCount();
+                    elapsedSeconds = getEllapsedSeconds(endPerformanceCount, startPerformanceCount, performanceFrequency);
+                }
+            }
+#ifdef SHOWFPS
+            char outMS[256];
+            float fps = 1.0f / elapsedSeconds;
+            _snprintf_s(outMS, sizeof(outMS), "Frame time: %0.01fms. FPS: %0.01f\n ", elapsedSeconds * 1000.0f, fps);
+            OutputDebugString(outMS);
+#endif
+            startPerformanceCount = endPerformanceCount;
         }
     }
 
