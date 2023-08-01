@@ -59,8 +59,10 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     //y += image->offset.y;
     //x += image->offset.x;
 
+    int frameWidth = image->width / image->hframes; // TODO: check handling image widths that are odd. (ie 23)  
+
     int drawHeight = image->height;
-    int drawWidth = image->width;
+    int drawWidth = frameWidth;
     if (drawHeight + y > screenHeight) {
         drawHeight = (int)(screenHeight - y);
     }
@@ -72,7 +74,8 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     bufferMemory += roundFloat(clamp(x));
 
     uint32_t* pixelPointer = image->pixelPointer;
-    pixelPointer += (drawHeight - 1) * image->width;
+    pixelPointer += (drawHeight - 1) * image->width; // Go to end row of bmp (it's inverted)
+    
 
     if (x < 0) {
         drawWidth += roundFloat(x);
@@ -89,6 +92,7 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     }
 
     for (int j = 0; j < drawHeight; j++) {
+        pixelPointer += frameWidth * frame;
         for (int i = 0; i < drawWidth; i++) {
             float alphaValue = (*pixelPointer >> 24) / 255.0f;
             uint32_t redValueS = (*pixelPointer & 0xFF0000) >> 16;
@@ -107,8 +111,8 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
             bufferMemory++;
             pixelPointer++; // left to right
         }
-        pixelPointer += image->width - drawWidth; // Remainder
-        pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted)
+        pixelPointer += image->width - drawWidth*(frame+1); // Remainder to get to end of row
+        pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted) TODO: just load them in the right order
         bufferMemory += strideToNextRow;
     }
 }

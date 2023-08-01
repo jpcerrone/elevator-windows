@@ -35,7 +35,7 @@ struct BitmapHeader {
 };
 #pragma pack(pop)
 
-Image loadBMP(char* path, readFile_t* readFunction) {
+Image loadBMP(char* path, readFile_t* readFunction, int hframes = 1) {
     FileReadResult result = readFunction(path);
     Image retImage = {};
     BitmapHeader* header = (BitmapHeader*)(result.memory);
@@ -64,6 +64,8 @@ Image loadBMP(char* path, readFile_t* readFunction) {
             modifyingPixelPointer++;
         }
     }
+
+    retImage.hframes = hframes;
 
     return retImage;
 }
@@ -97,26 +99,6 @@ void setNextDirection(GameState *state) {
         }
         state->moving = true;
     }
-    /* gdscript
-    func calculateNextDirection():
-    # Calculate next floor
-    # Calculate next stop and direction of movement
-    var minDist:int = Globals.INT_MAX
-    var currentNext:int = currentFloor
-    for i in 10:
-        if (enabledFloors[i]):
-            var newMin = abs(currentFloor - i)
-            if (newMin < minDist):
-                minDist = newMin
-                currentNext = i
-    currentDestination = currentNext
-    var oldDirection = direction
-    if (currentDestination > currentFloor):
-        direction = -1
-    else:
-        direction = 1
-    if (oldDirection != direction):
-        speed = startingSpeed*/ //gdscript
 }
 
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
@@ -132,17 +114,21 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->moving = false;
 
         state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
+        state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction,2);
+        state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
+        // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
     }
-    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0xFFFFFFFF);
+    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
     Vector2i elevatorDim = { 78,90 };
     drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
         (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);
 
     drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
 
     // Update floor states based on input
-    for (int i = 1; i < 11; i++) {
-        if (input.buttons[i-1]) {
+    for (int i = 0; i < 10; i++) {
+        if (input.buttons[i]) {
             if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
                 continue;
             }
@@ -181,12 +167,15 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             }
         }
     }
-
+    for (int j = 0; j < 10; j++) {
+        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height*9,
+            state->images.button.height + state->images.button.height*j, screenWidth, screenHeight, state->floorStates[j]);
+    }
 
 #ifdef SHOWBUTTONSTATES
     char floorsString[11];
     floorsString[0] = 'f';
-    for (int i = 1; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         if (state->floorStates[i]) {
             floorsString[i] = '1';
         }

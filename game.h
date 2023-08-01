@@ -5,7 +5,7 @@
 
 struct GameState {
     bool isInitialized;
-    bool floorStates[11]; // 0 is the index for floor 1, 9 is the index for floor 10
+    bool floorStates[11]; // 0 is the index for floor 0, 10 is the index for floor 9, there's a starting floor 10.
     int elevatorPosY;
     int currentFloor;
     int currentDestination;
@@ -19,15 +19,17 @@ struct GameState {
 
     struct images_t {
         Image ui;
-        // Image button..., etc
+        Image button;
+        Image uiBottom;
     };
     images_t images;
 };
 
 struct GameInput {
     union {
-        bool buttons[9];
+        bool buttons[10];
         struct {
+            bool button0;
             bool button1;
             bool button2;
             bool button3;

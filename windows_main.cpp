@@ -191,6 +191,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                         }
                         if (key == VK_NUMPAD1 || key == '1') {
                             newInput.button1 = true;
+                        }                          
+                        if (key == VK_NUMPAD0 || key == '0') {
+                            newInput.button0 = true;
                         }                    
                     }
 
