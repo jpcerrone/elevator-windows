@@ -1,39 +1,74 @@
 #include <cstdint>
 #include <stdio.h>
 
+#include "game.h"
 #include "vector2i.c"
 #include "graphics.c"
+#include "platform.h"
+#include "intrinsics.h"
+#include "assertions.h"
 
-struct GameInput {
-    union {
-        bool buttons[9];
-        struct {
-            bool button1;
-            bool button2;
-            bool button3;
-            bool button4;
-            bool button5;
-            bool button6;
-            bool button7;
-            bool button8;
-            bool button9;
-        };
-    };
+#pragma pack(push, 1)
+struct BitmapHeader {
+    uint16_t FileType;
+    uint32_t FileSize;
+    uint16_t Reserved1;
+    uint16_t Reserved2;
+    uint32_t BitmapOffset;
+    uint32_t Size;            /* Size of this header in bytes */
+    int32_t  Width;           /* Image width in pixels */
+    int32_t  Height;          /* Image height in pixels */
+    uint16_t  Planes;          /* Number of color planes */
+    uint16_t  BitsPerPixel;    /* Number of bits per pixel */
+    uint32_t Compression;     /* Compression methods used */
+    uint32_t SizeOfBitmap;    /* Size of bitmap in bytes */
+    int32_t  HorzResolution;  /* Horizontal resolution in pixels per meter */
+    int32_t  VertResolution;  /* Vertical resolution in pixels per meter */
+    uint32_t ColorsUsed;      /* Number of colors in the image */
+    uint32_t ColorsImportant; /* Minimum number of important colors */
+    /* Fields added for Windows 4.x follow this line */
 
+    uint32_t RedMask;       /* Mask identifying bits of red component */
+    uint32_t GreenMask;     /* Mask identifying bits of green component */
+    uint32_t BlueMask;      /* Mask identifying bits of blue component */
+    uint32_t AlphaMask;     /* Mask identifying bits of alpha component */
 };
+#pragma pack(pop)
+
+Image loadBMP(char* path, readFile_t* readFunction) {
+    FileReadResult result = readFunction(path);
+    Image retImage = {};
+    BitmapHeader* header = (BitmapHeader*)(result.memory);
+
+    Assert(header->Compression == 3);
+
+    retImage.pixelPointer = (uint32_t*)((uint8_t*)result.memory + header->BitmapOffset);
+    retImage.width = header->Width;
+    retImage.height = header->Height;
+
+    // Modify loaded bmp to set its pixels in the right order. Our pixel format is AARRGGBB, but bmps may vary because of their masks.
+    int redOffset = findFirstSignificantBit(header->RedMask);
+    int greenOffset = findFirstSignificantBit(header->GreenMask);
+    int blueOffset = findFirstSignificantBit(header->BlueMask);
+    int alphaOffset = findFirstSignificantBit(header->AlphaMask);
+
+    uint32_t* modifyingPixelPointer = retImage.pixelPointer;
+    for (int j = 0; j < header->Height; j++) {
+        for (int i = 0; i < header->Width; i++) {
+            int newRedValue = ((*modifyingPixelPointer & header->RedMask) >> redOffset) << 16;
+            int newGreenValue = ((*modifyingPixelPointer & header->GreenMask) >> greenOffset) << 8;
+            int newBlueValue = ((*modifyingPixelPointer & header->BlueMask) >> blueOffset) << 0;
+            int newAlphaValue = ((*modifyingPixelPointer & header->AlphaMask) >> alphaOffset) << 24;
+
+            *modifyingPixelPointer = newAlphaValue | newRedValue | newGreenValue | newBlueValue; //OG RRGGBBAA
+            modifyingPixelPointer++;
+        }
+    }
+
+    return retImage;
+}
 
 static const float startingSpeed = 150;
-struct GameState {
-    bool isInitialized;
-    bool floorStates[11]; // 0 is the index for floor 1, 9 is the index for floor 10
-    int elevatorPosY;
-    int currentFloor;
-    int currentDestination;
-    float elevatorSpeed;
-    int direction;
-    bool moving;
-};
-
 
 void setNextDirection(GameState *state) {
     // Get next destination
@@ -95,15 +130,22 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->elevatorSpeed = startingSpeed;
         state->direction = 0;
         state->moving = false;
+
+        state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
     }
     fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0xFFFFFFFF);
     Vector2i elevatorDim = { 78,90 };
     drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
         (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);
 
+    drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
+
     // Update floor states based on input
     for (int i = 1; i < 11; i++) {
         if (input.buttons[i-1]) {
+            if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
+                continue;
+            }
             state->floorStates[i] = !state->floorStates[i];
         }
     }

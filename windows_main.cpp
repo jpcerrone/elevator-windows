@@ -4,6 +4,8 @@
 #include "game.c"
 #include "vector2i.c"
 #include "assertions.h"
+#include "platform.h"
+
 static const int desiredFPS = 60;
 
 static bool gameRunning;
@@ -16,6 +18,42 @@ LARGE_INTEGER getEndPerformanceCount() {
 
 float getEllapsedSeconds(LARGE_INTEGER endPerformanceCount, LARGE_INTEGER startPerformanceCount, LARGE_INTEGER performanceFrequency) {
     return ((float)(endPerformanceCount.QuadPart - startPerformanceCount.QuadPart) / (float)performanceFrequency.QuadPart);
+}
+
+FileReadResult readFile(char* path) {
+    HANDLE fileHandle = CreateFile(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    FileReadResult result = {};
+    if (fileHandle)
+    {
+        LARGE_INTEGER size;
+        if (GetFileSizeEx(fileHandle, &size))
+        {
+            result.size = size.QuadPart;
+            result.memory = VirtualAlloc(0, (SIZE_T)result.size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (result.memory)
+            {
+                DWORD bytesRead = 0;
+                if (ReadFile(fileHandle, result.memory, (DWORD)result.size, &bytesRead, NULL) && (bytesRead == result.size))
+                {
+                }
+                else
+                {
+                    OutputDebugString("Failure reading file");
+                }
+            }
+        }
+        else
+        {
+            OutputDebugString("Failure getting file size");
+        }
+        CloseHandle(fileHandle);
+    }
+    return result;
+}
+
+void freeFileMemory(void* memory)
+{
+    VirtualFree(memory, 0, MEM_RELEASE);
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -43,6 +81,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 // WINAPI: calling convention, tells compiler order of parameters
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+    FileReadResult file = readFile("../spr/button.png");
+
     gameRunning = true;
 
     MMRESULT canQueryEveryMs = timeBeginPeriod(1);
@@ -105,7 +145,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         GameState state;
         state.isInitialized = false;
-
+        state.readFileFunction = readFile;
         // Timing
         LARGE_INTEGER startPerformanceCount;
         QueryPerformanceCounter(&startPerformanceCount);

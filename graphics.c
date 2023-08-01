@@ -1,3 +1,5 @@
+#include "graphics.h"
+
 int roundFloat(float value) {
     return (int)(value + 0.5f);
 }
@@ -7,8 +9,8 @@ uint32_t roundUFloat(float value) {
 }
 
 // Using int's since it's pixel art
-void drawRectangle(void* bitmap, int bmWidth, int bmHeight, int minX, int minY, int maxX, int maxY, float r, float g, float b) {
-    uint32_t* pixel = (uint32_t*)bitmap;
+void drawRectangle(void* outputStream, int bmWidth, int bmHeight, int minX, int minY, int maxX, int maxY, float r, float g, float b) {
+    uint32_t* pixel = (uint32_t*)outputStream;
 
     if (minX < 0)
         minX = 0;
@@ -48,5 +50,65 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
             *pixel = color;
             pixel++;
         }
+    }
+}
+
+void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0) {
+
+    // TODO: implement offset.
+    //y += image->offset.y;
+    //x += image->offset.x;
+
+    int drawHeight = image->height;
+    int drawWidth = image->width;
+    if (drawHeight + y > screenHeight) {
+        drawHeight = (int)(screenHeight - y);
+    }
+    if (drawWidth + x > screenWidth) {
+        drawWidth = (int)(screenWidth - x);
+    }
+    // Go to upper left corner.
+    bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (image->height + roundFloat(clamp(y)))));
+    bufferMemory += roundFloat(clamp(x));
+
+    uint32_t* pixelPointer = image->pixelPointer;
+    pixelPointer += (drawHeight - 1) * image->width;
+
+    if (x < 0) {
+        drawWidth += roundFloat(x);
+        pixelPointer -= roundFloat(x);
+    }
+    if (y < 0) {
+        drawHeight += roundFloat(y);
+        bufferMemory -= screenWidth * (roundFloat(y));
+    }
+
+    int strideToNextRow = screenWidth - drawWidth;
+    if (strideToNextRow < 0) {
+        strideToNextRow = 0;
+    }
+
+    for (int j = 0; j < drawHeight; j++) {
+        for (int i = 0; i < drawWidth; i++) {
+            float alphaValue = (*pixelPointer >> 24) / 255.0f;
+            uint32_t redValueS = (*pixelPointer & 0xFF0000) >> 16;
+            uint32_t greenValueS = (*pixelPointer & 0x00FF00) >> 8;
+            uint32_t blueValueS = (*pixelPointer & 0x0000FF);
+
+            uint32_t redValueD = (*bufferMemory & 0xFF0000) >> 16;
+            uint32_t greenValueD = (*bufferMemory & 0x00FF00) >> 8;
+            uint32_t blueValueD = *bufferMemory & 0x0000FF;
+
+            uint32_t interpolatedPixel = (uint32_t)(alphaValue * redValueS + (1 - alphaValue) * redValueD) << 16
+                | (uint32_t)(alphaValue * greenValueS + (1 - alphaValue) * greenValueD) << 8
+                | (uint32_t)(alphaValue * blueValueS + (1 - alphaValue) * blueValueD);
+
+            *bufferMemory = interpolatedPixel;
+            bufferMemory++;
+            pixelPointer++; // left to right
+        }
+        pixelPointer += image->width - drawWidth; // Remainder
+        pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted)
+        bufferMemory += strideToNextRow;
     }
 }
