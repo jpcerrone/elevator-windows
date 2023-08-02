@@ -2,6 +2,29 @@
 #include "platform.h"
 #include "graphics.h"
 #include "math.h"
+#include "vector2i.c"
+
+static const int MAX_GUYS_ON_SCREEN = 20;
+
+struct Guy {
+    bool active;
+
+    bool onElevator;
+    int elevatorSpot;
+
+    int desiredFloor;
+    int currentFloor;
+    // mood
+};
+
+static const int ELEVATOR_SPOTS = 5;
+static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
+    {-2, -37},
+    {-21, -37},
+    {-30, -45},
+    {7, -45},
+    { -9, -45},
+};
 
 struct GameState {
     bool isInitialized;
@@ -13,6 +36,10 @@ struct GameState {
     int direction;
     bool moving;
 
+
+    Guy guys[MAX_GUYS_ON_SCREEN];
+    bool elevatorSpots[ELEVATOR_SPOTS];
+
     readFile_t* readFileFunction;
     //writeFile_t* writeFile;
     //freeFileMemory_t* freeFileMemory;
@@ -21,6 +48,9 @@ struct GameState {
         Image ui;
         Image button;
         Image uiBottom;
+        Image uiGuy;
+        Image elevator;
+        Image guy;
     };
     images_t images;
 };

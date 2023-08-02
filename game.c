@@ -101,6 +101,32 @@ void setNextDirection(GameState *state) {
     }
 }
 
+void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots) {
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+        if (guys[i].active) {
+            if (guys[i].onElevator && (guys[i].desiredFloor == currentFloor)) {
+                guys[i] = {};
+                elevatorSpots[guys[i].elevatorSpot] = false;
+            }
+            else {
+                if (guys[i].currentFloor == currentFloor) {
+                    guys[i].onElevator = true;
+                    guys[i].currentFloor = -1;
+
+                    for (int s = 0; s < ELEVATOR_SPOTS; s++) {
+                        if (!elevatorSpots[s]) {
+                            guys[i].elevatorSpot = s;
+                            elevatorSpots[s] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
+
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
 void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState *state, float delta) {
     if (!state->isInitialized) {
@@ -112,19 +138,36 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->elevatorSpeed = startingSpeed;
         state->direction = 0;
         state->moving = false;
+        memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
+
+        for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+            state->guys[i] = {};
+        }
+        state->guys[0].active = true;
+        state->guys[0].currentFloor = 9;
+        state->guys[0].desiredFloor = 5;
+
+        state->guys[3].active = true;
+        state->guys[3].currentFloor = 7;
+        state->guys[3].desiredFloor = 4;
 
         state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
         state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction,2);
         state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
+        state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
+        state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
+        state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
         // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
     }
     fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
     Vector2i elevatorDim = { 78,90 };
-    drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
-        (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);
+    /*drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
+        (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);*/
 
     drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - elevatorDim.width) / 2,
+        (float)(screenHeight - elevatorDim.height) / 2 , screenWidth, screenHeight);
 
     // Update floor states based on input
     for (int i = 0; i < 10; i++) {
@@ -136,7 +179,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         }
     }
 
-    setNextDirection(state);
+    
 
     // Move and calculate getting to floors
     if (state->moving) {
@@ -145,31 +188,57 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         } else if (state->direction == -1) {
             state->elevatorPosY -= (int)((float)state->elevatorSpeed * delta);
         }
-    }
-    if (state->direction == -1) {
-        if (state->elevatorPosY < floorsY[state->currentFloor + state->direction]) {
-            state->currentFloor += state->direction;
-            if (state->currentFloor == state->currentDestination) {
-                state->moving = false;
-                state->direction = 0; // Not strictly needed I think
-                state->floorStates[state->currentDestination] = false;
+        if (state->direction == -1) {
+            if (state->elevatorPosY < floorsY[state->currentFloor + state->direction]) {
+                setNextDirection(state);
+                state->currentFloor += state->direction;
+                if (state->currentFloor == state->currentDestination) {
+                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
+                    state->moving = false;
+                    state->direction = 0; // Not strictly needed I think
+                    state->floorStates[state->currentDestination] = false;
+                }
             }
         }
-    }
-    else if (state->direction == 1) {
-        if (state->elevatorPosY > floorsY[state->currentFloor + state->direction]) {
-            state->currentFloor += state->direction;
-            if (state->currentFloor == state->currentDestination) {
-                state->moving = false;
-                state->direction = 0; // Not strictly needed I think
-                state->floorStates[state->currentDestination] = false;
+        else if (state->direction == 1) {
+            if (state->elevatorPosY > floorsY[state->currentFloor + state->direction]) {
+                setNextDirection(state);
+                state->currentFloor += state->direction;
+                if (state->currentFloor == state->currentDestination) {
+                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
+                    state->moving = false;
+                    state->direction = 0; // Not strictly needed I think
+                    state->floorStates[state->currentDestination] = false;
 
+                }
             }
         }
     }
+    else {
+        setNextDirection(state);
+    }
+
+    // Display buttons
     for (int j = 0; j < 10; j++) {
-        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height*9,
-            state->images.button.height + state->images.button.height*j, screenWidth, screenHeight, state->floorStates[j]);
+        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height*9.0f,
+            (float)state->images.button.height + state->images.button.height*j, screenWidth, screenHeight, state->floorStates[j]);
+    }
+
+    Vector2i screenCenter = { screenWidth / 2.0, screenHeight / 2.0 };
+
+    // Display guys, TODO: could be done only on updates
+    for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) { 
+        if (state->guys[j].active) {
+            if (state->guys[j].onElevator) {
+                Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
+                drawImage((uint32_t*)bitMapMemory, &state->images.guy, screenCenter.x  + posInElevator.x,
+                    screenCenter.y + posInElevator.y, screenWidth, screenHeight);
+            }
+            else {
+                drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f,
+                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight);
+            }
+        }
     }
 
 #ifdef SHOWBUTTONSTATES

@@ -2,3 +2,4 @@ bin/*
 CppProperties.json
 .vs/*
 experiment/
+*.py
