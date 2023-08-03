@@ -157,17 +157,26 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
         state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
         state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
+        state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
         // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
     }
     fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
-    Vector2i elevatorDim = { 78,90 };
     /*drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
         (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);*/
 
+    static int floorSeparationY = 320;
+    //drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, screenHeight - (state->elevatorPosY % screenHeight), screenWidth, screenHeight);
+
+    int floorYOffset = state->elevatorPosY % (floorSeparationY); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
+    if (floorYOffset > 160) {
+        floorYOffset = (floorSeparationY - floorYOffset)*-1; // Hack to handle negative mod operation.
+    }
+    drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0,16 - floorYOffset, screenWidth, screenHeight);
+
     drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
-    drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - elevatorDim.width) / 2,
-        (float)(screenHeight - elevatorDim.height) / 2 , screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
+        (float)(screenHeight-16 - state->images.elevator.height) / 2 +16, screenWidth, screenHeight);
 
     // Update floor states based on input
     for (int i = 0; i < 10; i++) {
@@ -193,6 +202,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 setNextDirection(state);
                 state->currentFloor += state->direction;
                 if (state->currentFloor == state->currentDestination) {
+                    state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
                     pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
                     state->moving = false;
                     state->direction = 0; // Not strictly needed I think
@@ -205,6 +215,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 setNextDirection(state);
                 state->currentFloor += state->direction;
                 if (state->currentFloor == state->currentDestination) {
+                    state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
                     pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
                     state->moving = false;
                     state->direction = 0; // Not strictly needed I think
