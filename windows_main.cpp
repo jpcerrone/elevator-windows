@@ -38,13 +38,13 @@ FileReadResult readFile(char* path) {
                 }
                 else
                 {
-                    OutputDebugString("Failure reading file");
+                    OutputDebugString("Failure reading file\n");
                 }
             }
         }
         else
         {
-            OutputDebugString("Failure getting file size");
+            OutputDebugString("Failure getting file size\n");
         }
         CloseHandle(fileHandle);
     }

@@ -37,7 +37,15 @@ struct BitmapHeader {
 
 Image loadBMP(char* path, readFile_t* readFunction, int hframes = 1) {
     FileReadResult result = readFunction(path);
+    char failedResource[256];
     Image retImage = {};
+    if (result.memory == nullptr) {
+        int writtenPrefix = sprintf_s(failedResource, 256, "Failure loading resource ");
+        writtenPrefix += sprintf_s(failedResource + writtenPrefix, 256, path);
+        sprintf_s(failedResource + writtenPrefix, 256, "\n");
+        OutputDebugString(failedResource);
+        return retImage;
+    }
     BitmapHeader* header = (BitmapHeader*)(result.memory);
 
     Assert(header->Compression == 3);
@@ -128,7 +136,7 @@ void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots) {
 }
 
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
-void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState *state, float delta) {
+void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, float delta) {
     if (!state->isInitialized) {
         state->isInitialized = true;
         memset(state->floorStates, 0, sizeof(state->floorStates));
@@ -149,19 +157,24 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
         state->guys[3].active = true;
         state->guys[3].currentFloor = 7;
-        state->guys[3].desiredFloor = 4;
+        state->guys[3].desiredFloor = 8;
 
         state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
-        state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction,2);
+        state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
         state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
         state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
         state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
         state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
         state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
+        state->images.floor = loadBMP("../spr/floor.bmp", state->readFileFunction);
+        state->images.vigasB = loadBMP("../spr/vigasB.bmp", state->readFileFunction);
+        state->images.vigasF = loadBMP("../spr/vigasF.bmp", state->readFileFunction);
+        state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
+        state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
         // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
     }
     fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
-    /*drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 , 
+    /*drawRectangle(bitMapMemory, screenWidth, screenHeight, (screenWidth-elevatorDim.width)/2 ,
         (screenHeight - elevatorDim.height) / 2, (screenWidth + elevatorDim.width) / 2, (screenHeight + elevatorDim.height) / 2, 1.0, 0.0, 0.0);*/
 
     static int floorSeparationY = 320;
@@ -169,14 +182,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
     int floorYOffset = state->elevatorPosY % (floorSeparationY); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
     if (floorYOffset > 160) {
-        floorYOffset = (floorSeparationY - floorYOffset)*-1; // Hack to handle negative mod operation.
+        floorYOffset = (floorSeparationY - floorYOffset) * -1; // Hack to handle negative mod operation.
     }
-    drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0,16 - floorYOffset, screenWidth, screenHeight);
-
-    drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
-    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.vigasB, 0, 16, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
-        (float)(screenHeight-16 - state->images.elevator.height) / 2 +16, screenWidth, screenHeight);
+        (float)(screenHeight - 16 - state->images.elevator.height) / 2 + 16, screenWidth, screenHeight);
 
     // Update floor states based on input
     for (int i = 0; i < 10; i++) {
@@ -188,13 +199,14 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         }
     }
 
-    
+
 
     // Move and calculate getting to floors
     if (state->moving) {
         if (state->direction == 1) {
             state->elevatorPosY += (int)((float)state->elevatorSpeed * delta);
-        } else if (state->direction == -1) {
+        }
+        else if (state->direction == -1) {
             state->elevatorPosY -= (int)((float)state->elevatorSpeed * delta);
         }
         if (state->direction == -1) {
@@ -231,26 +243,59 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
     // Display buttons
     for (int j = 0; j < 10; j++) {
-        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height*9.0f,
-            (float)state->images.button.height + state->images.button.height*j, screenWidth, screenHeight, state->floorStates[j]);
+        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height * 9.0f,
+            (float)state->images.button.height + state->images.button.height * j, screenWidth, screenHeight, state->floorStates[j]);
     }
 
-    Vector2i screenCenter = { screenWidth / 2.0, screenHeight / 2.0 };
+    Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
 
     // Display guys, TODO: could be done only on updates
-    for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) { 
+    drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
+    for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
         if (state->guys[j].active) {
             if (state->guys[j].onElevator) {
                 Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
-                drawImage((uint32_t*)bitMapMemory, &state->images.guy, screenCenter.x  + posInElevator.x,
-                    screenCenter.y + posInElevator.y, screenWidth, screenHeight);
+                drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
+                    (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight);
             }
             else {
-                drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f,
-                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight);
+                Vector2i offsetInBox = { -2, -1 };
+                drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
+                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y, screenWidth, screenHeight);
+                Vector2i arrowOffsetInBox = { 11, 0 };
+                int arrowFrame;
+                if (state->guys[j].currentFloor < state->guys[j].desiredFloor) {
+                    arrowFrame = 0;
+                }
+                else {
+                    arrowFrame = 1;
+                }
+                drawImage((uint32_t*)bitMapMemory, &state->images.arrows, state->images.uiGuy.height * 8.0f + arrowOffsetInBox.x,
+                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight, arrowFrame);
             }
         }
     }
+
+    // Draw rest of scene
+    drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
+        (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.floor, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
+    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+
+#ifdef SHOWGUYSSTATS
+    static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN
+    char guysString[MAX_GUYS_STRING_SIZE];
+    guysString[0] = '\0';
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+        if (state->guys[i].active) { //Using strlen is very inefficient here, but OK for debug code
+            sprintf_s(guysString + strlen(guysString), MAX_GUYS_STRING_SIZE, "[g%d: c:%d d:%d e:%d], ", i, state->guys[i].currentFloor, state->guys[i].desiredFloor, state->guys[i].onElevator);
+        }
+     }
+    guysString[strlen(guysString)] = '\0';
+    OutputDebugString(guysString);
+    OutputDebugStringW(L"\n");
+#endif
 
 #ifdef SHOWBUTTONSTATES
     char floorsString[11];

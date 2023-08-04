@@ -50,8 +50,13 @@ struct GameState {
         Image uiBottom;
         Image uiGuy;
         Image elevator;
+        Image elevatorF;
         Image guy;
         Image floorB;
+        Image floor;
+        Image vigasB;
+        Image vigasF;
+        Image arrows;
     };
     images_t images;
 };

@@ -54,10 +54,14 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
 }
 
 void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0) {
-
     // TODO: implement offset.
     //y += image->offset.y;
     //x += image->offset.x;
+
+    if (!image->pixelPointer) {
+        OutputDebugString("Can not display null image\n");
+        return;
+    }
 
     int frameWidth = image->width / image->hframes; // TODO: check handling image widths that are odd. (ie 23)  
 
