@@ -23,7 +23,7 @@ struct TimerRange {
 #endif
 
 static const float SPAWN_TIME = 8.0f;
-
+static const float MOOD_TIME = 4.0f;
 struct Guy {
     bool active;
 
@@ -33,7 +33,7 @@ struct Guy {
     int desiredFloor;
     int currentFloor;
 
-    int mood; //From 3 to 1, 0 is game over
+    float mood; //From MOOD_TIME*4 to MOOD_TIME, 0 is game over
 };
 
 

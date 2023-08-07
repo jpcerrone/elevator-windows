@@ -179,6 +179,7 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     }
 
     guys[randomGuyIdx].active = true;
+    guys[randomGuyIdx].mood = MOOD_TIME * 4; // 4 to get all 4 possible mood state's ranges [0..3]
     guys[randomGuyIdx].currentFloor = randomCurrent;
     guys[randomGuyIdx].desiredFloor = randomDest;
     fullFloors[randomCurrent] = true;
@@ -286,10 +287,20 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
 
     // Timers
+    // Spawn
     state->spawnTimer -= delta;
     if (state->spawnTimer <= 0) {
         state->spawnTimer = SPAWN_TIME;
         spawnNewGuy(state->guys, state->fullFloors, state->currentFloor);
+    }
+    // Mood
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+        if (state->guys[i].active) {
+            state->guys[i].mood -= delta;
+            if (state->guys[i].mood <= 0.0) {
+                int a = 5;
+            }
+        }
     }
 
 
