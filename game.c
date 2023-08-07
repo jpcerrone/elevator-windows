@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <stdio.h>
+#include <time.h>
 
 #include "game.h"
 #include "vector2i.c"
@@ -109,7 +110,7 @@ void setNextDirection(GameState *state) {
     }
 }
 
-void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots) {
+void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots, bool *fullFloors) {
     for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
         if (guys[i].active) {
             if (guys[i].onElevator && (guys[i].desiredFloor == currentFloor)) {
@@ -119,7 +120,9 @@ void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots) {
             else {
                 if (guys[i].currentFloor == currentFloor) {
                     guys[i].onElevator = true;
+                    fullFloors[currentFloor] = false;
                     guys[i].currentFloor = -1;
+
 
                     for (int s = 0; s < ELEVATOR_SPOTS; s++) {
                         if (!elevatorSpots[s]) {
@@ -135,9 +138,58 @@ void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots) {
     }
 }
 
+bool areAllFloorsSave1Full(bool *fullFloors) {
+    bool oneFree = false;
+    for (int i = 0; i < 10; i++) {
+        if (!fullFloors[i]) {
+            if (!oneFree) {
+                oneFree = true;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool areMaxGuysOnScreen(Guy *guys) {
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+        if (!guys[i].active) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
+    if (areAllFloorsSave1Full(fullFloors) || areMaxGuysOnScreen(guys)) {
+        return;
+    }
+
+    int randomGuyIdx = rand() % MAX_GUYS_ON_SCREEN;
+    int randomCurrent = rand() % 10;
+    int randomDest = rand() % 10;
+
+    while (guys[randomGuyIdx].active) { 
+        randomGuyIdx = rand() % 10;
+    }
+    while (fullFloors[randomCurrent] || (randomCurrent == currentFloor)) { // TODO add case when all floors are full
+        randomCurrent = rand() % 10;
+    }
+
+    guys[randomGuyIdx].active = true;
+    guys[randomGuyIdx].currentFloor = randomCurrent;
+    guys[randomGuyIdx].desiredFloor = randomDest;
+    fullFloors[randomCurrent] = true;
+}
+
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
 void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, float delta) {
     if (!state->isInitialized) {
+
+        srand((uint32_t)time(NULL)); // Set random seed
+
         state->isInitialized = true;
         memset(state->floorStates, 0, sizeof(state->floorStates));
         state->elevatorPosY = floorsY[10];
@@ -146,18 +198,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->elevatorSpeed = startingSpeed;
         state->direction = 0;
         state->moving = false;
+        state->spawnTimer = 1.5f; // First guy should appear fast
         memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
-
+        memset(state->fullFloors, 0, sizeof(bool) * 10);
         for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
             state->guys[i] = {};
         }
-        state->guys[0].active = true;
-        state->guys[0].currentFloor = 9;
-        state->guys[0].desiredFloor = 5;
-
-        state->guys[3].active = true;
-        state->guys[3].currentFloor = 7;
-        state->guys[3].desiredFloor = 8;
 
         state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
         state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
@@ -199,8 +245,6 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         }
     }
 
-
-
     // Move and calculate getting to floors
     if (state->moving) {
         if (state->direction == 1) {
@@ -215,7 +259,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 state->currentFloor += state->direction;
                 if (state->currentFloor == state->currentDestination) {
                     state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
-                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
+                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots, state->fullFloors);
                     state->moving = false;
                     state->direction = 0; // Not strictly needed I think
                     state->floorStates[state->currentDestination] = false;
@@ -228,7 +272,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 state->currentFloor += state->direction;
                 if (state->currentFloor == state->currentDestination) {
                     state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
-                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots);
+                    pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots, state->fullFloors);
                     state->moving = false;
                     state->direction = 0; // Not strictly needed I think
                     state->floorStates[state->currentDestination] = false;
@@ -240,6 +284,14 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     else {
         setNextDirection(state);
     }
+
+    // Timers
+    state->spawnTimer -= delta;
+    if (state->spawnTimer <= 0) {
+        state->spawnTimer = SPAWN_TIME;
+        spawnNewGuy(state->guys, state->fullFloors, state->currentFloor);
+    }
+
 
     // Display buttons
     for (int j = 0; j < 10; j++) {

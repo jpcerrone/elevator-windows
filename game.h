@@ -4,7 +4,25 @@
 #include "math.h"
 #include "vector2i.c"
 
+
 static const int MAX_GUYS_ON_SCREEN = 20;
+static const int ELEVATOR_SPOTS = 5;
+static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
+    {-2, -37},
+    {-21, -37},
+    {-30, -45},
+    {7, -45},
+    { -9, -45},
+};
+
+#if 0
+struct TimerRange {
+    float min;
+    float max;
+};
+#endif
+
+static const float SPAWN_TIME = 8.0f;
 
 struct Guy {
     bool active;
@@ -14,17 +32,10 @@ struct Guy {
 
     int desiredFloor;
     int currentFloor;
-    // mood
+
+    int mood; //From 3 to 1, 0 is game over
 };
 
-static const int ELEVATOR_SPOTS = 5;
-static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
-    {-2, -37},
-    {-21, -37},
-    {-30, -45},
-    {7, -45},
-    { -9, -45},
-};
 
 struct GameState {
     bool isInitialized;
@@ -36,9 +47,11 @@ struct GameState {
     int direction;
     bool moving;
 
+    float spawnTimer;
 
     Guy guys[MAX_GUYS_ON_SCREEN];
     bool elevatorSpots[ELEVATOR_SPOTS];
+    bool fullFloors[10];
 
     readFile_t* readFileFunction;
     //writeFile_t* writeFile;
