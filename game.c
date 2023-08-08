@@ -120,6 +120,7 @@ void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots, bool *fu
             else {
                 if (guys[i].currentFloor == currentFloor) {
                     guys[i].onElevator = true;
+                    guys[i].mood = MOOD_TIME * 3; // 4 to get all 4 possible mood state's ranges [0..3]
                     fullFloors[currentFloor] = false;
                     guys[i].currentFloor = -1;
 
@@ -179,7 +180,7 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     }
 
     guys[randomGuyIdx].active = true;
-    guys[randomGuyIdx].mood = MOOD_TIME * 4; // 4 to get all 4 possible mood state's ranges [0..3]
+    guys[randomGuyIdx].mood = MOOD_TIME * 3; // 3 to get all 3 possible mood state's ranges + dead [0..3 + 4]
     guys[randomGuyIdx].currentFloor = randomCurrent;
     guys[randomGuyIdx].desiredFloor = randomDest;
     fullFloors[randomCurrent] = true;
@@ -316,15 +317,17 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
     for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
         if (state->guys[j].active) {
+            int mood = (3 - ceil(state->guys[j].mood / MOOD_TIME)) % 4; // TODO remove %4 once we die at the 0 mood.
             if (state->guys[j].onElevator) {
                 Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
                 drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
-                    (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight);
+                    (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
             }
             else {
                 Vector2i offsetInBox = { -2, -1 };
                 drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
-                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y, screenWidth, screenHeight);
+                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y, 
+                    screenWidth, screenHeight, mood);
                 Vector2i arrowOffsetInBox = { 11, 0 };
                 int arrowFrame;
                 if (state->guys[j].currentFloor < state->guys[j].desiredFloor) {

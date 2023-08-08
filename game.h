@@ -33,7 +33,7 @@ struct Guy {
     int desiredFloor;
     int currentFloor;
 
-    float mood; //From MOOD_TIME*4 to MOOD_TIME, 0 is game over
+    float mood; //From MOOD_TIME*3 to MOOD_TIME, 0 is game over
 };
 
 
