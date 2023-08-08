@@ -9,6 +9,10 @@ float clamp(float value) {
     }
 }
 
+int ceil(float value) {
+    return (int)(value + 1);
+}
+
 #if 0
 float getRandomFloat(float min, float max) {
     static int resolution = 100; // Assumes 100-step resolution.
