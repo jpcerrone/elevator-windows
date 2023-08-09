@@ -9,8 +9,8 @@ float clamp(float value) {
     }
 }
 
-int ceil(float value) {
-    return (int)(value + 1);
+int ceil(float value) { // NOTE wont work for negative numbers
+    return (int)(value + 0.99);
 }
 
 #if 0

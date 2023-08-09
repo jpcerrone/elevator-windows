@@ -1,5 +1,5 @@
 #include "graphics.h"
-
+#include "assertions.h"
 int roundFloat(float value) {
     return (int)(value + 0.5f);
 }
@@ -54,6 +54,8 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
 }
 
 void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0) {
+    Assert(frame >= 0);
+    Assert(frame <= image->hframes);
     // TODO: implement offset.
     //y += image->offset.y;
     //x += image->offset.x;

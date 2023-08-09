@@ -7,23 +7,20 @@
 
 static const int MAX_GUYS_ON_SCREEN = 20;
 static const int ELEVATOR_SPOTS = 5;
-static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
-    {-2, -37},
-    {-21, -37},
-    {-30, -45},
-    {7, -45},
-    { -9, -45},
-};
+static const float STARTING_SPEED = 150;
+static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
 
-#if 0
-struct TimerRange {
-    float min;
-    float max;
+static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
+    {-2, -29}, // TODO: these were done by eye, y is fine
+    {-21, -29},
+    {-30, -37},
+    {7, -37},
+    { -9, -37},
 };
-#endif
 
 static const float SPAWN_TIME = 8.0f;
 static const float MOOD_TIME = 4.0f;
+static const float DOOR_TIME = 0.5f;
 struct Guy {
     bool active;
 
@@ -48,6 +45,7 @@ struct GameState {
     bool moving;
 
     float spawnTimer;
+    float doorTimer;
 
     Guy guys[MAX_GUYS_ON_SCREEN];
     bool elevatorSpots[ELEVATOR_SPOTS];
@@ -70,6 +68,7 @@ struct GameState {
         Image vigasB;
         Image vigasF;
         Image arrows;
+        Image door;
     };
     images_t images;
 };
