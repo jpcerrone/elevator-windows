@@ -53,7 +53,7 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
     }
 }
 
-void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0) {
+void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, bool flip = 0) {
     Assert(frame >= 0);
     Assert(frame <= image->hframes);
     // TODO: implement offset.
@@ -98,7 +98,10 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     }
 
     for (int j = 0; j < drawHeight; j++) {
-        pixelPointer += frameWidth * frame;
+        pixelPointer += frameWidth * frame; // Advance to proper frame
+        if (flip) {
+            pixelPointer += frameWidth;
+        }
         for (int i = 0; i < drawWidth; i++) {
             float alphaValue = (*pixelPointer >> 24) / 255.0f;
             uint32_t redValueS = (*pixelPointer & 0xFF0000) >> 16;
@@ -115,7 +118,15 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
 
             *bufferMemory = interpolatedPixel;
             bufferMemory++;
-            pixelPointer++; // left to right
+            if (flip) {
+                pixelPointer--; // right to left
+            }
+            else {
+                pixelPointer++; // left to right
+            }
+        }
+        if (flip) {
+            pixelPointer += frameWidth;
         }
         pixelPointer += image->width - drawWidth*(frame+1); // Remainder to get to end of row
         pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted) TODO: just load them in the right order

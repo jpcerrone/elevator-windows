@@ -39,25 +39,27 @@ void setNextDirection(GameState *state) {
     }
 }
 
-void pickAndPlaceGuys(Guy* guys, int currentFloor, bool *elevatorSpots, bool *fullFloors) {
+void pickAndPlaceGuys(GameState* state) {
     for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-        if (guys[i].active) {
-            if (guys[i].onElevator && (guys[i].desiredFloor == currentFloor)) {
-                guys[i] = {};
-                elevatorSpots[guys[i].elevatorSpot] = false;
+        if (state->guys[i].active) {
+            if (state->guys[i].onElevator && (state->guys[i].desiredFloor == state->currentFloor)) {
+                state->guys[i] = {};
+                state->elevatorSpots[state->guys[i].elevatorSpot] = false;
+                state->dropOffFloor = state->currentFloor;
+                state->dropOffTimer = DROP_OFF_TIME;
             }
             else {
-                if (guys[i].currentFloor == currentFloor) {
-                    guys[i].onElevator = true;
-                    guys[i].mood = MOOD_TIME * 3; // 4 to get all 4 possible mood state's ranges [0..3]
-                    fullFloors[currentFloor] = false;
-                    guys[i].currentFloor = -1;
+                if (state->guys[i].currentFloor == state->currentFloor) {
+                    state->guys[i].onElevator = true;
+                    state->guys[i].mood = MOOD_TIME * 3; // 3 to get all 4 possible mood state's ranges [0..3]
+                    state->fullFloors[state->currentFloor] = false;
+                    state->guys[i].currentFloor = -1;
 
 
                     for (int s = 0; s < ELEVATOR_SPOTS; s++) {
-                        if (!elevatorSpots[s]) {
-                            guys[i].elevatorSpot = s;
-                            elevatorSpots[s] = true;
+                        if (!state->elevatorSpots[s]) {
+                            state->guys[i].elevatorSpot = s;
+                            state->elevatorSpots[s] = true;
                             break;
                         }
                     }
@@ -115,41 +117,49 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     fullFloors[randomCurrent] = true;
 }
 
+void initGameState(GameState *state) {
+
+    srand((uint32_t)time(NULL)); // Set random seed
+
+    state->isInitialized = true;
+    memset(state->floorStates, 0, sizeof(state->floorStates));
+    state->elevatorPosY = floorsY[10];
+    state->currentFloor = 10;
+    state->currentDestination = 10;
+    state->elevatorSpeed = STARTING_SPEED;
+    state->direction = 0;
+    state->moving = false;
+    state->dropOffFloor = -1;
+
+    state->spawnTimer = 1.5f; // First guy should appear fast
+    state->doorTimer = 0;
+    state->dropOffTimer = 0;
+
+    memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
+    memset(state->fullFloors, 0, sizeof(bool) * 10);
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+        state->guys[i] = {};
+    }
+
+    state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
+    state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
+    state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
+    state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
+    state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
+    state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
+    state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
+    state->images.floor = loadBMP("../spr/floor.bmp", state->readFileFunction);
+    state->images.vigasB = loadBMP("../spr/vigasB.bmp", state->readFileFunction);
+    state->images.vigasF = loadBMP("../spr/vigasF.bmp", state->readFileFunction);
+    state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
+    state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
+    state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
+    // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
+}
+
 void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, float delta) {
     if (!state->isInitialized) {
-
-        srand((uint32_t)time(NULL)); // Set random seed
-
-        state->isInitialized = true;
-        memset(state->floorStates, 0, sizeof(state->floorStates));
-        state->elevatorPosY = floorsY[10];
-        state->currentFloor = 10;
-        state->currentDestination = 10;
-        state->elevatorSpeed = STARTING_SPEED;
-        state->direction = 0;
-        state->moving = false;
-        state->spawnTimer = 1.5f; // First guy should appear fast
-        state->doorTimer = 0;
-        memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
-        memset(state->fullFloors, 0, sizeof(bool) * 10);
-        for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-            state->guys[i] = {};
-        }
-
-        state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
-        state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
-        state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
-        state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
-        state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
-        state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
-        state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
-        state->images.floor = loadBMP("../spr/floor.bmp", state->readFileFunction);
-        state->images.vigasB = loadBMP("../spr/vigasB.bmp", state->readFileFunction);
-        state->images.vigasF = loadBMP("../spr/vigasF.bmp", state->readFileFunction);
-        state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
-        state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
-        state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
-        // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
+        initGameState(state);
     }
 
     // Timers
@@ -175,8 +185,15 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         state->doorTimer -= delta;
     }
     if (state->doorTimer < 0) {
-        pickAndPlaceGuys(state->guys, state->currentFloor, state->elevatorSpots, state->fullFloors);
+        pickAndPlaceGuys(state);
         state->doorTimer = 0;
+    }
+    // Drop Off
+    if (state->dropOffTimer > 0) {
+        state->dropOffTimer -= delta;
+    }
+    if (state->dropOffTimer < 0) {
+        state->dropOffTimer = 0;
     }
 
     // Update floor states based on input
@@ -234,10 +251,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
     // Display background stuff
     fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
-    static int floorSeparationY = 320;
-    int floorYOffset = state->elevatorPosY % (floorSeparationY); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
+    int floorYOffset = state->elevatorPosY % (FLOOR_SEPARATION); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
     if (floorYOffset > 160) {
-        floorYOffset = (floorSeparationY - floorYOffset) * -1; // Hack to handle negative mod operation.
+        floorYOffset = (FLOOR_SEPARATION - floorYOffset) * -1; // Hack to handle negative mod operation.
     }
     drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.vigasB, 0, 16, screenWidth, screenHeight);
@@ -284,13 +300,27 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     // Draw rest of scene
     drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
         (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);
-    int doorFrame = 1;
-    if (state->doorTimer > 0) {
-        doorFrame = 0;
-    }
+    int doorFrame = (state->doorTimer > 0) ? 0 : 1;
     drawImage((uint32_t*)bitMapMemory, &state->images.door, (float)(screenWidth - state->images.elevatorF.width) / 2,
         (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight, doorFrame);
     drawImage((uint32_t*)bitMapMemory, &state->images.floor, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
+
+    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) { // TODO see if we can add this in to the other loop, once we have Z layering
+        if(state->guys[i].active) {
+            if ((state->guys[i].currentFloor* FLOOR_SEPARATION >= state->elevatorPosY- FLOOR_SEPARATION/2) && 
+                (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION/2)) {
+                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight);
+            }
+        }
+
+    }
+    if (state->dropOffTimer > 0) {
+        if ((state->dropOffFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
+            (state->dropOffFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
+            drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight, 0, 1);
+        }
+    }
+
     drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
 
