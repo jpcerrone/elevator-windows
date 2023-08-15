@@ -73,6 +73,8 @@ struct GameState {
         Image vigasF;
         Image arrows;
         Image door;
+        Image numbersFont3px;
+        Image numbersFont4px;
     };
     images_t images;
 };

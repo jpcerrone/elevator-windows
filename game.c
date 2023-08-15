@@ -154,6 +154,7 @@ void initGameState(GameState *state) {
     state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
     state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
     state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
+    state->images.numbersFont3px = loadBMP("../spr/m3x6Numbers.bmp", state->readFileFunction, 10);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 }
 
@@ -168,7 +169,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         if (state->guys[i].active) {
             state->guys[i].mood -= delta;
             if (state->guys[i].mood <= 0.0) {
-                int a = 5;
+                // TODO fill
             }
         }
     }
@@ -324,6 +325,18 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
     drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
 
+    if (state->currentFloor == 10) {
+        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
+            screenWidth, screenHeight, 1);
+        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
+            screenWidth, screenHeight, 0);
+    }
+    else {
+        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
+            screenWidth, screenHeight, state->currentFloor);
+    }
+    //drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x, (float)screenCenter.y,
+    //    screenWidth, screenHeight, 3, 0, 2);
     // Debug stuff
 #ifdef SHOWGUYSSTATS
     static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN
