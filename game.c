@@ -108,6 +108,9 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     }
     while (fullFloors[randomCurrent] || (randomCurrent == currentFloor)) { // TODO add case when all floors are full
         randomCurrent = rand() % 10;
+    }    
+    while (randomDest == randomCurrent) {
+        randomDest = rand() % 10;
     }
 
     guys[randomGuyIdx].active = true;
@@ -268,6 +271,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
 
     Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
+    Vector2i floorIndicatorOffset = { 10, 40 }; // TODO: find proper offset from og game
 
     // Display guys, TODO: could be done only on updates
     drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
@@ -278,6 +282,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
                 drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
                     (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
+                drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + posInElevator.x + floorIndicatorOffset.x,
+                    (float)screenCenter.y + posInElevator.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 0, 2);
             }
             else {
                 Vector2i offsetInBox = { -2, -1 };
@@ -310,7 +316,10 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         if(state->guys[i].active) {
             if ((state->guys[i].currentFloor* FLOOR_SEPARATION >= state->elevatorPosY- FLOOR_SEPARATION/2) && 
                 (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION/2)) {
-                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight);
+                Vector2i waitingGuyPos = {10, 16 - floorYOffset + 40 };
+                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight);
+                    drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
+                        (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 0, 2);
             }
         }
 
@@ -335,8 +344,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
             screenWidth, screenHeight, state->currentFloor);
     }
-    //drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x, (float)screenCenter.y,
-    //    screenWidth, screenHeight, 3, 0, 2);
+
     // Debug stuff
 #ifdef SHOWGUYSSTATS
     static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN

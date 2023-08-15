@@ -18,7 +18,7 @@
 	-DDONTSPAWN
 #>
 
-$COMMON_FLAGS = "-DSHOWGUYSSTATS -DDEBUG /Febin\ /Fdbin\ /Fobin\ /nologo -W4 -Oi -Od -GR -EHa -wd4100 -wd4201"
+$COMMON_FLAGS = "-DDEBUG /Febin\ /Fdbin\ /Fobin\ /nologo -W4 -Oi -Od -GR -EHa -wd4100 -wd4201"
 $COMMON_LIBS = "User32.lib Gdi32.lib Winmm.lib"
 
 $compileGame = "cl -Zi .\windows_main.cpp $COMMON_FLAGS /link $COMMON_LIBS /INCREMENTAL:NO"

@@ -54,6 +54,7 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
 }
 
 void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, bool flip = 0, int scale = 1) {
+    // TODO: should x and y be ints?
     Assert(frame >= 0);
     Assert(scale >= 1);
     Assert(frame <= image->hframes);
