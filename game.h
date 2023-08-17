@@ -4,6 +4,8 @@
 #include "math.h"
 #include "vector2i.c"
 
+static const uint32_t GREY = 0xFF686868;
+static const uint32_t BLACK = 0xFF000000;
 
 static const int MAX_GUYS_ON_SCREEN = 20;
 static const int ELEVATOR_SPOTS = 5;
@@ -38,6 +40,7 @@ struct Guy {
 
 struct GameState {
     bool isInitialized;
+    int score;
     bool floorStates[11]; // 0 is the index for floor 0, 10 is the index for floor 9, there's a starting floor 10.
     int elevatorPosY;
     int currentFloor;

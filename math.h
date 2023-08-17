@@ -22,3 +22,11 @@ float getRandomFloat(float min, float max) {
     return floatBetweenMinMax;
 }
 #endif
+
+int pow(int base, int exponent) {
+    int retVal = 1;
+    for (int i = 1; i <= exponent; i++) {
+        retVal *= base;
+    }
+    return retVal;
+}

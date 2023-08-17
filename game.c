@@ -54,7 +54,7 @@ void pickAndPlaceGuys(GameState* state) {
                     state->guys[i].mood = MOOD_TIME * 3; // 3 to get all 4 possible mood state's ranges [0..3]
                     state->fullFloors[state->currentFloor] = false;
                     state->guys[i].currentFloor = -1;
-
+                    state->score += 624;
 
                     for (int s = 0; s < ELEVATOR_SPOTS; s++) {
                         if (!state->elevatorSpots[s]) {
@@ -120,11 +120,26 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     fullFloors[randomCurrent] = true;
 }
 
+void getDigitsFromNumber(uint32_t number, int *digits, int maxDigits) { // test with 1000
+    int currentDigit = 0;
+    int currentNumber = number;
+    for (int i = maxDigits-1; i >= 0; i--) {
+        int significantVal = pow(10, i);
+        int numBySignificantVal = currentNumber / significantVal;
+        if ((numBySignificantVal) >= 1) { //3.261
+            digits[currentDigit] = (int)(numBySignificantVal); // 3
+            currentNumber = currentNumber - significantVal * numBySignificantVal;
+        }
+        currentDigit++;
+    }
+}
+
 void initGameState(GameState *state) {
 
     srand((uint32_t)time(NULL)); // Set random seed
 
     state->isInitialized = true;
+    state->score = 0;
     memset(state->floorStates, 0, sizeof(state->floorStates));
     state->elevatorPosY = floorsY[10];
     state->currentFloor = 10;
@@ -282,8 +297,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
                 drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
                     (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
-                drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + posInElevator.x + floorIndicatorOffset.x,
-                    (float)screenCenter.y + posInElevator.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 0, 2);
+                drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + posInElevator.x + floorIndicatorOffset.x,
+                    (float)screenCenter.y + posInElevator.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 2);
             }
             else {
                 Vector2i offsetInBox = { -2, -1 };
@@ -318,8 +333,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION/2)) {
                 Vector2i waitingGuyPos = {10, 16 - floorYOffset + 40 };
                     drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight);
-                    drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
-                        (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 0, 2);
+                    drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
+                        (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 2);
             }
         }
 
@@ -332,18 +347,37 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
 
     drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
-    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
 
+    // Bottom UI
+    const int MAX_DIGITS_DISPLAY = 6;
+    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+    int digits[MAX_DIGITS_DISPLAY] = { };
+    getDigitsFromNumber(state->score, digits, MAX_DIGITS_DISPLAY);
+    int digitsToDraw = MAX_DIGITS_DISPLAY;
+    for (int i = 0; i < MAX_DIGITS_DISPLAY; i++) {
+        if (digits[i] == 0) {
+            digitsToDraw--;
+        }
+        else {
+            break;
+        }
+    }
+    digitsToDraw = max(digitsToDraw, 1); // So that '0' can be drawn as a single digit.
+    for (int i = 0; i < digitsToDraw; i++) {
+        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5.0f + i*5.0f, 5.0f,
+            screenWidth, screenHeight, digits[MAX_DIGITS_DISPLAY - digitsToDraw + i], 1, GREY);
+    }
     if (state->currentFloor == 10) {
-        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
+        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
             screenWidth, screenHeight, 1);
-        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
+        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
             screenWidth, screenHeight, 0);
     }
     else {
-        drawImage((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
+        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
             screenWidth, screenHeight, state->currentFloor);
     }
+
 
     // Debug stuff
 #ifdef SHOWGUYSSTATS
