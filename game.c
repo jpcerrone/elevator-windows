@@ -120,25 +120,36 @@ void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     fullFloors[randomCurrent] = true;
 }
 
-void getDigitsFromNumber(uint32_t number, int *digits, int maxDigits) { // test with 1000
-    int currentDigit = 0;
-    int currentNumber = number;
-    for (int i = maxDigits-1; i >= 0; i--) {
-        int significantVal = pow(10, i);
-        int numBySignificantVal = currentNumber / significantVal;
-        if ((numBySignificantVal) >= 1) { //3.261
-            digits[currentDigit] = (int)(numBySignificantVal); // 3
-            currentNumber = currentNumber - significantVal * numBySignificantVal;
-        }
-        currentDigit++;
-    }
-}
-
 void initGameState(GameState *state) {
 
     srand((uint32_t)time(NULL)); // Set random seed
 
     state->isInitialized = true;
+    state->currentScreen = MENU;
+
+    state->transitionInTimer = 0;
+    state->transitionOutTimer = 0;
+    state->scoreTimer = 0;
+
+    state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
+    state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
+    state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
+    state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
+    state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
+    state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
+    state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
+    state->images.floor = loadBMP("../spr/floor.bmp", state->readFileFunction);
+    state->images.vigasB = loadBMP("../spr/vigasB.bmp", state->readFileFunction);
+    state->images.vigasF = loadBMP("../spr/vigasF.bmp", state->readFileFunction);
+    state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
+    state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
+    state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
+    state->images.numbersFont3px = loadBMP("../spr/m3x6Numbers.bmp", state->readFileFunction, 10);
+    // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
+
+}
+
+void resetGame(GameState *state) {
     state->score = 0;
     memset(state->floorStates, 0, sizeof(state->floorStates));
     state->elevatorPosY = floorsY[10];
@@ -158,265 +169,277 @@ void initGameState(GameState *state) {
     for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
         state->guys[i] = {};
     }
-
-    state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
-    state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
-    state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
-    state->images.uiGuy = loadBMP("../spr/ui-guy.bmp", state->readFileFunction, 4);
-    state->images.elevator = loadBMP("../spr/elevator.bmp", state->readFileFunction);
-    state->images.guy = loadBMP("../spr/guy.bmp", state->readFileFunction, 4);
-    state->images.floorB = loadBMP("../spr/floor_b.bmp", state->readFileFunction);
-    state->images.floor = loadBMP("../spr/floor.bmp", state->readFileFunction);
-    state->images.vigasB = loadBMP("../spr/vigasB.bmp", state->readFileFunction);
-    state->images.vigasF = loadBMP("../spr/vigasF.bmp", state->readFileFunction);
-    state->images.elevatorF = loadBMP("../spr/elevator_f.bmp", state->readFileFunction);
-    state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
-    state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
-    state->images.numbersFont3px = loadBMP("../spr/m3x6Numbers.bmp", state->readFileFunction, 10);
-    // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 }
 
 void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, float delta) {
     if (!state->isInitialized) {
         initGameState(state);
     }
-
-    // Timers
-    // Mood
-    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-        if (state->guys[i].active) {
-            state->guys[i].mood -= delta;
-            if (state->guys[i].mood <= 0.0) {
-                // TODO fill
+    switch (state->currentScreen) {
+        case MENU:{
+            fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+            for (int i = 0; i < 10; i++) {
+                if (input.buttons[i]) {
+                    resetGame(state);
+                    state->currentScreen = GAME;
+                    state->transitionOutTimer = TRANSITION_TIME;
+                    break;
+                }
             }
-        }
-    }
+        }break;        
+        case GAME:{
+            // Timers
+            // Mood
+            for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+                if (state->guys[i].active) {
+                    state->guys[i].mood -= delta;
+                    if (state->guys[i].mood <= 0.0) {
+                        state->transitionInTimer = TRANSITION_TIME;
+                        state->transitionOutTimer = TRANSITION_TIME;
+                        state->scoreTimer = SCORE_TIME;
+                        state->currentScreen = SCORE;
+                        return;
+                    }
+                }
+            }
 #ifndef DONTSPAWN
-    // Spawn
-    state->spawnTimer -= delta;
-    if (state->spawnTimer <= 0) {
-        state->spawnTimer = SPAWN_TIME;
-        spawnNewGuy(state->guys, state->fullFloors, state->currentFloor);
-    }
+            // Spawn
+            state->spawnTimer -= delta;
+            if (state->spawnTimer <= 0) {
+                state->spawnTimer = SPAWN_TIME;
+                spawnNewGuy(state->guys, state->fullFloors, state->currentFloor);
+            }
 #endif
-    // Doors
-    if (state->doorTimer > 0) {
-        state->doorTimer -= delta;
-    }
-    if (state->doorTimer < 0) {
-        pickAndPlaceGuys(state);
-        state->doorTimer = 0;
-    }
-    // Drop Off
-    if (state->dropOffTimer > 0) {
-        state->dropOffTimer -= delta;
-    }
-    if (state->dropOffTimer < 0) {
-        state->dropOffTimer = 0;
-    }
+            // Doors
+            if (state->doorTimer > 0) {
+                state->doorTimer -= delta;
+            }
+            if (state->doorTimer < 0) {
+                pickAndPlaceGuys(state);
+                state->doorTimer = 0;
+            }
+            // Drop Off
+            if (state->dropOffTimer > 0) {
+                state->dropOffTimer -= delta;
+            }
+            if (state->dropOffTimer < 0) {
+                state->dropOffTimer = 0;
+            }
 
-    // Update floor states based on input
-    for (int i = 0; i < 10; i++) {
-        if (input.buttons[i]) {
-            if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
-                continue;
-            }
-            state->floorStates[i] = !state->floorStates[i];
-        }
-    }
-
-    // Move and calculate getting to floors
-    if (!(state->doorTimer > 0)) {
-        if (state->moving) {
-            state->elevatorSpeed *= 1 + delta / 2;
-            if (state->direction == 1) {
-                state->elevatorPosY += (int)((float)state->elevatorSpeed * delta);
-            }
-            else if (state->direction == -1) {
-                state->elevatorPosY -= (int)((float)state->elevatorSpeed * delta);
-            }
-            if (state->direction == -1) {
-                if (state->elevatorPosY < floorsY[state->currentFloor - 1]) {
-                    state->currentFloor += state->direction;
-                    setNextDirection(state);
-                    if (state->currentFloor == state->currentDestination) {
-                        state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
-                        state->moving = false;
-                        state->direction = 0; // Not strictly needed I think
-                        state->floorStates[state->currentDestination] = false;
-                        state->doorTimer = DOOR_TIME;
+            // Update floor states based on input
+            for (int i = 0; i < 10; i++) {
+                if (input.buttons[i]) {
+                    if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
+                        continue;
                     }
+                    state->floorStates[i] = !state->floorStates[i];
                 }
             }
-            else if (state->direction == 1) {
-                if (state->elevatorPosY > floorsY[state->currentFloor + 1]) {
-                    state->currentFloor += state->direction;
-                    setNextDirection(state);
-                    if (state->currentFloor == state->currentDestination) {
-                        state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
-                        state->moving = false;
-                        state->direction = 0; // Not strictly needed I think
-                        state->floorStates[state->currentDestination] = false;
-                        state->doorTimer = DOOR_TIME;
+
+            // Move and calculate getting to floors
+            if (!(state->doorTimer > 0)) {
+                if (state->moving) {
+                    state->elevatorSpeed *= 1 + delta / 2;
+                    if (state->direction == 1) {
+                        state->elevatorPosY += (int)((float)state->elevatorSpeed * delta);
                     }
-                }
-            }
-        }
-        else {
-            state->elevatorSpeed = STARTING_SPEED; // TODO REMOVE?
-            setNextDirection(state);
-        }
-    }
-
-    // Display background stuff
-    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, 0x0);
-    int floorYOffset = state->elevatorPosY % (FLOOR_SEPARATION); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
-    if (floorYOffset > 160) {
-        floorYOffset = (FLOOR_SEPARATION - floorYOffset) * -1; // Hack to handle negative mod operation.
-    }
-    drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
-    drawImage((uint32_t*)bitMapMemory, &state->images.vigasB, 0, 16, screenWidth, screenHeight);
-    drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
-        (float)(screenHeight - 16 - state->images.elevator.height) / 2 + 16, screenWidth, screenHeight);
-
-    // Display buttons
-    for (int j = 0; j < 10; j++) {
-        drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height * 9.0f,
-            (float)state->images.button.height + state->images.button.height * j, screenWidth, screenHeight, state->floorStates[j]);
-    }
-
-    Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
-    Vector2i floorIndicatorOffset = { 10, 40 }; // TODO: find proper offset from og game
-
-    // Display guys, TODO: could be done only on updates
-    drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
-    for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
-        if (state->guys[j].active) {
-            int mood = (3 - ceil(state->guys[j].mood / MOOD_TIME)) % 4; // TODO remove %4 once we die at the 0 mood.
-            if (state->guys[j].onElevator) {
-                Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
-                drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
-                    (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
-                drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + posInElevator.x + floorIndicatorOffset.x,
-                    (float)screenCenter.y + posInElevator.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 2);
-            }
-            else {
-                Vector2i offsetInBox = { -2, -1 };
-                drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
-                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y, 
-                    screenWidth, screenHeight, mood);
-                Vector2i arrowOffsetInBox = { 11, 0 };
-                int arrowFrame;
-                if (state->guys[j].currentFloor < state->guys[j].desiredFloor) {
-                    arrowFrame = 0;
+                    else if (state->direction == -1) {
+                        state->elevatorPosY -= (int)((float)state->elevatorSpeed * delta);
+                    }
+                    if (state->direction == -1) {
+                        if (state->elevatorPosY < floorsY[state->currentFloor - 1]) {
+                            state->currentFloor += state->direction;
+                            setNextDirection(state);
+                            if (state->currentFloor == state->currentDestination) {
+                                state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
+                                state->moving = false;
+                                state->direction = 0; // Not strictly needed I think
+                                state->floorStates[state->currentDestination] = false;
+                                state->doorTimer = DOOR_TIME;
+                            }
+                        }
+                    }
+                    else if (state->direction == 1) {
+                        if (state->elevatorPosY > floorsY[state->currentFloor + 1]) {
+                            state->currentFloor += state->direction;
+                            setNextDirection(state);
+                            if (state->currentFloor == state->currentDestination) {
+                                state->elevatorPosY = floorsY[state->currentFloor]; // Correct elevator position
+                                state->moving = false;
+                                state->direction = 0; // Not strictly needed I think
+                                state->floorStates[state->currentDestination] = false;
+                                state->doorTimer = DOOR_TIME;
+                            }
+                        }
+                    }
                 }
                 else {
-                    arrowFrame = 1;
+                    state->elevatorSpeed = STARTING_SPEED; // TODO REMOVE?
+                    setNextDirection(state);
                 }
-                drawImage((uint32_t*)bitMapMemory, &state->images.arrows, state->images.uiGuy.height * 8.0f + arrowOffsetInBox.x,
-                    (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight, arrowFrame);
             }
-        }
-    }
 
-    // Draw rest of scene
-    drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
-        (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);
-    int doorFrame = (state->doorTimer > 0) ? 0 : 1;
-    drawImage((uint32_t*)bitMapMemory, &state->images.door, (float)(screenWidth - state->images.elevatorF.width) / 2,
-        (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight, doorFrame);
-    drawImage((uint32_t*)bitMapMemory, &state->images.floor, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
-
-    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) { // TODO see if we can add this in to the other loop, once we have Z layering
-        if(state->guys[i].active) {
-            if ((state->guys[i].currentFloor* FLOOR_SEPARATION >= state->elevatorPosY- FLOOR_SEPARATION/2) && 
-                (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION/2)) {
-                Vector2i waitingGuyPos = {10, 16 - floorYOffset + 40 };
-                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight);
-                    drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
-                        (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 2);
+            // Display background stuff
+            fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+            int floorYOffset = state->elevatorPosY % (FLOOR_SEPARATION); // TODO see if we can express theese 16 in some other way, redner only on drawable part.
+            if (floorYOffset > 160) {
+                floorYOffset = (FLOOR_SEPARATION - floorYOffset) * -1; // Hack to handle negative mod operation.
             }
-        }
+            drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
+            drawImage((uint32_t*)bitMapMemory, &state->images.vigasB, 0, 16, screenWidth, screenHeight);
+            drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevator.height) / 2 + 16, screenWidth, screenHeight);
 
-    }
-    if (state->dropOffTimer > 0) {
-        if ((state->dropOffFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
-            (state->dropOffFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
-            drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight, 0, 1);
-        }
-    }
+            // Display buttons
+            for (int j = 0; j < 10; j++) {
+                drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height * 9.0f,
+                    (float)state->images.button.height + state->images.button.height * j, screenWidth, screenHeight, state->floorStates[j]);
+            }
 
-    drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
+            Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
+            Vector2i floorIndicatorOffset = { 10, 40 }; // TODO: find proper offset from og game
 
-    // Bottom UI
-    const int MAX_DIGITS_DISPLAY = 6;
-    drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
-    int digits[MAX_DIGITS_DISPLAY] = { };
-    getDigitsFromNumber(state->score, digits, MAX_DIGITS_DISPLAY);
-    int digitsToDraw = MAX_DIGITS_DISPLAY;
-    for (int i = 0; i < MAX_DIGITS_DISPLAY; i++) {
-        if (digits[i] == 0) {
-            digitsToDraw--;
-        }
-        else {
-            break;
-        }
-    }
-    digitsToDraw = max(digitsToDraw, 1); // So that '0' can be drawn as a single digit.
-    for (int i = 0; i < digitsToDraw; i++) {
-        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5.0f + i*5.0f, 5.0f,
-            screenWidth, screenHeight, digits[MAX_DIGITS_DISPLAY - digitsToDraw + i], 1, GREY);
-    }
-    if (state->currentFloor == 10) {
-        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
-            screenWidth, screenHeight, 1);
-        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
-            screenWidth, screenHeight, 0);
-    }
-    else {
-        drawNumber((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
-            screenWidth, screenHeight, state->currentFloor);
-    }
+            // Display guys, TODO: could be done only on updates
+            drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
+            for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
+                if (state->guys[j].active) {
+                    int mood = (3 - ceil(state->guys[j].mood / MOOD_TIME)) % 4; // TODO remove %4 once we die at the 0 mood.
+                    if (state->guys[j].onElevator) {
+                        Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
+                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
+                            (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
+                        drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + posInElevator.x + floorIndicatorOffset.x,
+                            (float)screenCenter.y + posInElevator.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 2);
+                    }
+                    else {
+                        Vector2i offsetInBox = { -2, -1 };
+                        drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
+                            (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y,
+                            screenWidth, screenHeight, mood);
+                        Vector2i arrowOffsetInBox = { 11, 0 };
+                        int arrowFrame;
+                        if (state->guys[j].currentFloor < state->guys[j].desiredFloor) {
+                            arrowFrame = 0;
+                        }
+                        else {
+                            arrowFrame = 1;
+                        }
+                        drawImage((uint32_t*)bitMapMemory, &state->images.arrows, state->images.uiGuy.height * 8.0f + arrowOffsetInBox.x,
+                            (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight, arrowFrame);
+                    }
+                }
+            }
 
+            // Draw rest of scene
+            drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);
+            int doorFrame = (state->doorTimer > 0) ? 0 : 1;
+            drawImage((uint32_t*)bitMapMemory, &state->images.door, (float)(screenWidth - state->images.elevatorF.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight, doorFrame);
+            drawImage((uint32_t*)bitMapMemory, &state->images.floor, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
 
-    // Debug stuff
+            for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) { // TODO see if we can add this in to the other loop, once we have Z layering
+                if (state->guys[i].active) {
+                    if ((state->guys[i].currentFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
+                        (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
+                        Vector2i waitingGuyPos = { 10, 16 - floorYOffset + 40 };
+                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight);
+                        drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
+                            (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 2);
+                    }
+                }
+
+            }
+            if (state->dropOffTimer > 0) {
+                if ((state->dropOffFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
+                    (state->dropOffFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
+                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight, 0, 1);
+                }
+            }
+
+            drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
+
+            // Bottom UI
+            drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5, 5, screenWidth, screenHeight);
+            if (state->currentFloor == 10) {
+                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
+                    screenWidth, screenHeight, 1);
+                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
+                    screenWidth, screenHeight, 0);
+            }
+            else {
+                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
+                    screenWidth, screenHeight, state->currentFloor);
+            }
+
+            // Transition In         
+            if (state->transitionOutTimer > 0) {
+                drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight * state->transitionOutTimer), 0, 0, 0);
+                state->transitionOutTimer -= delta;
+            }
+
+            // Debug stuff
 #ifdef SHOWGUYSSTATS
-    static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN
-    char guysString[MAX_GUYS_STRING_SIZE];
-    guysString[0] = '\0';
-    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-        if (state->guys[i].active) { //Using strlen is very inefficient here, but OK for debug code
-            sprintf_s(guysString + strlen(guysString), MAX_GUYS_STRING_SIZE, "[g%d: c:%d d:%d e:%d], ", i, state->guys[i].currentFloor, state->guys[i].desiredFloor, state->guys[i].onElevator);
-        }
-     }
-    guysString[strlen(guysString)] = '\0';
-    OutputDebugString(guysString);
-    OutputDebugStringW(L"\n");
+            static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN
+            char guysString[MAX_GUYS_STRING_SIZE];
+            guysString[0] = '\0';
+            for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+                if (state->guys[i].active) { //Using strlen is very inefficient here, but OK for debug code
+                    sprintf_s(guysString + strlen(guysString), MAX_GUYS_STRING_SIZE, "[g%d: c:%d d:%d e:%d], ", i, state->guys[i].currentFloor, state->guys[i].desiredFloor, state->guys[i].onElevator);
+                }
+            }
+            guysString[strlen(guysString)] = '\0';
+            OutputDebugString(guysString);
+            OutputDebugStringW(L"\n");
 #endif
 
 #ifdef SHOWBUTTONSTATES
-    char floorsString[11];
-    floorsString[0] = 'f';
-    for (int i = 0; i < 10; i++) {
-        if (state->floorStates[i]) {
-            floorsString[i] = '1';
-        }
-        else {
-            floorsString[i] = '0';
-        }
-    }
-    floorsString[10] = '\0';
-    OutputDebugString(floorsString);
-    OutputDebugStringW(L"\n");
+            char floorsString[11];
+            floorsString[0] = 'f';
+            for (int i = 0; i < 10; i++) {
+                if (state->floorStates[i]) {
+                    floorsString[i] = '1';
+                }
+                else {
+                    floorsString[i] = '0';
+                }
+            }
+            floorsString[10] = '\0';
+            OutputDebugString(floorsString);
+            OutputDebugStringW(L"\n");
 #endif
 
 #ifdef SHOWELEVATORSTATS
-    char buffer[100];
-    sprintf_s(buffer, "y: %d | curFl: %d | curDes: %d | spd: %f | dir:%d | mov:%d\n", 
-        state->elevatorPosY, state->currentFloor, state->currentDestination, state->elevatorSpeed, state->direction, state->moving);
+            char buffer[100];
+            sprintf_s(buffer, "y: %d | curFl: %d | curDes: %d | spd: %f | dir:%d | mov:%d\n",
+                state->elevatorPosY, state->currentFloor, state->currentDestination, state->elevatorSpeed, state->direction, state->moving);
 
-    OutputDebugString(buffer);
-    //OutputDebugString(L"\n");
+            OutputDebugString(buffer);
+            //OutputDebugString(L"\n");
 #endif
+        }break;        
+        case SCORE:{
+            //fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+            if (state->transitionInTimer > 0) {
+                state->transitionInTimer -= delta;
+                drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, (int)(screenHeight* state->transitionInTimer), screenWidth, screenHeight, 0, 0, 0);
+            }
+            else {
+                if (state->scoreTimer > 0) {
+                    state->scoreTimer -= delta;
+                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f, screenWidth, screenHeight, BLACK, true);
+                }
+                else if (state->transitionOutTimer > 0) {
+                    drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight* (1-state->transitionOutTimer)), 0, 0, 0);
+                    state->transitionOutTimer -= delta;
+                }
+                else {
+                    state->currentScreen = MENU;
+                }
+            }
+        }break;
+    }
+
 }
 

@@ -23,7 +23,7 @@ float getRandomFloat(float min, float max) {
 }
 #endif
 
-int pow(int base, int exponent) {
+uint32_t pow(int base, int exponent) {
     int retVal = 1;
     for (int i = 1; i <= exponent; i++) {
         retVal *= base;

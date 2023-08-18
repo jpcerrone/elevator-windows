@@ -53,7 +53,7 @@ void fillBGWithColor(void* bitMapMemory, int width, int height, uint32_t color =
     }
 }
 
-void drawNumber(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, int scale = 1, uint32_t color = BLACK) {
+void drawDigit(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, int scale = 1, uint32_t color = BLACK) {
     // TODO: should x and y be ints?
     Assert(frame >= 0);
     Assert(scale >= 1);
@@ -266,5 +266,44 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
 
         }
         bufferMemory += strideToNextRow;
+    }
+}
+
+void getDigitsFromNumber(uint32_t number, int* digits, int maxDigits) {
+    int currentDigit = 0;
+    int currentNumber = number;
+    for (int i = maxDigits - 1; i >= 0; i--) {
+        int significantVal = pow(10, i);
+        int numBySignificantVal = currentNumber / significantVal;
+        if ((numBySignificantVal) >= 1) {
+            digits[currentDigit] = (int)(numBySignificantVal);
+            currentNumber = currentNumber - significantVal * numBySignificantVal;
+        }
+        currentDigit++;
+    }
+}
+
+void drawNumber(uint32_t number, uint32_t* bufferMemory, const Image* font, float x, float y, int screenWidth, int screenHeight, uint32_t color = BLACK, bool centered = false) {
+    const int MAX_DIGITS_DISPLAY = 6;
+    const float digitSeparation = 5.0f;
+    Assert(number < pow(10, MAX_DIGITS_DISPLAY));
+    int digits[MAX_DIGITS_DISPLAY] = { };
+    int digitsToDraw = MAX_DIGITS_DISPLAY;
+    getDigitsFromNumber(number, digits, MAX_DIGITS_DISPLAY);
+    for (int i = 0; i < MAX_DIGITS_DISPLAY; i++) {
+        if (digits[i] == 0) {
+            digitsToDraw--;
+        }
+        else {
+            break;
+        }
+    }
+    digitsToDraw = max(digitsToDraw, 1); // So that '0' can be drawn as a single digit.
+    if (centered) {
+        x = x - digitsToDraw * digitSeparation / 2.0f;
+    }
+    for (int i = 0; i < digitsToDraw; i++) {
+        drawDigit((uint32_t*)bufferMemory, font, x + i * digitSeparation, y,
+            screenWidth, screenHeight, digits[MAX_DIGITS_DISPLAY - digitsToDraw + i], 1, GREY);
     }
 }

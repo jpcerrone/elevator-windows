@@ -25,6 +25,8 @@ static const float SPAWN_TIME = 8.0f;
 static const float MOOD_TIME = 4.0f;
 static const float DOOR_TIME = 0.5f;
 static const float DROP_OFF_TIME = 1.0f;
+static const float TRANSITION_TIME = 1.0f;
+static const float SCORE_TIME = 3.0f;
 struct Guy {
     bool active;
 
@@ -37,9 +39,15 @@ struct Guy {
     float mood; //From MOOD_TIME*3 to MOOD_TIME, 0 is game over
 };
 
+enum Screen {
+    MENU,
+    GAME,
+    SCORE,
+};
 
 struct GameState {
     bool isInitialized;
+    Screen currentScreen;
     int score;
     bool floorStates[11]; // 0 is the index for floor 0, 10 is the index for floor 9, there's a starting floor 10.
     int elevatorPosY;
@@ -52,6 +60,10 @@ struct GameState {
     float spawnTimer;
     float doorTimer;
     float dropOffTimer;
+    float transitionInTimer;
+    float transitionOutTimer;
+    float scoreTimer;
+
     int dropOffFloor;
 
     Guy guys[MAX_GUYS_ON_SCREEN];
