@@ -13,6 +13,8 @@ static const float STARTING_SPEED = 150;
 static const int FLOOR_SEPARATION = 320;
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
 
+static const char SCORE_PATH[MAX_PATH] = "maxScore";// MAX_PATH might be windows only
+
 static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
     {-2, -29}, // TODO: these were done by eye, y is fine
     {-21, -29},
@@ -49,6 +51,7 @@ struct GameState {
     bool isInitialized;
     Screen currentScreen;
     int score;
+    int maxScore;
     bool floorStates[11]; // 0 is the index for floor 0, 10 is the index for floor 9, there's a starting floor 10.
     int elevatorPosY;
     int currentFloor;
@@ -71,7 +74,7 @@ struct GameState {
     bool fullFloors[10];
 
     readFile_t* readFileFunction;
-    //writeFile_t* writeFile;
+    writeScoreToFile_t* writeScoreFunction;
     //freeFileMemory_t* freeFileMemory;
 
     struct images_t {

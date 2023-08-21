@@ -7,4 +7,6 @@ struct FileReadResult {
 
 typedef FileReadResult readFile_t(char* path);
 
+typedef bool writeScoreToFile_t(char* path, uint32_t score);
+
 void freeFileMemory(void* memory);

@@ -131,6 +131,16 @@ void initGameState(GameState *state) {
     state->transitionOutTimer = 0;
     state->scoreTimer = 0;
 
+    // Load max score
+    FileReadResult scoreResult = state->readFileFunction((char *)SCORE_PATH);
+    if (scoreResult.memory && (scoreResult.size == sizeof(uint32_t))) {
+        state->maxScore = *(uint32_t*)(scoreResult.memory);
+
+    }
+    else {
+        state->maxScore = 0;
+    }
+
     state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
     state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
     state->images.uiBottom = loadBMP("../spr/ui-bottom.bmp", state->readFileFunction);
@@ -420,7 +430,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 #endif
         }break;        
         case SCORE:{
-            //fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+            if (state->score > state->maxScore) {
+                state->maxScore = state->score;
+            }
             if (state->transitionInTimer > 0) {
                 state->transitionInTimer -= delta;
                 drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, (int)(screenHeight* state->transitionInTimer), screenWidth, screenHeight, 0, 0, 0);
@@ -429,6 +441,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 if (state->scoreTimer > 0) {
                     state->scoreTimer -= delta;
                     drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f, screenWidth, screenHeight, BLACK, true);
+                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 20, screenWidth, screenHeight, BLACK, true);
+                    state->writeScoreFunction((char *)& SCORE_PATH, state->maxScore);
                 }
                 else if (state->transitionOutTimer > 0) {
                     drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight* (1-state->transitionOutTimer)), 0, 0, 0);

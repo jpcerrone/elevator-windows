@@ -20,6 +20,23 @@ float getEllapsedSeconds(LARGE_INTEGER endPerformanceCount, LARGE_INTEGER startP
     return ((float)(endPerformanceCount.QuadPart - startPerformanceCount.QuadPart) / (float)performanceFrequency.QuadPart);
 }
 
+bool writeScoreToFile(char* path, uint32_t score) {
+    HANDLE fileHandle = CreateFile(path, GENERIC_WRITE, NULL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (fileHandle)
+    {
+        DWORD bytesWritten = 0;
+        DWORD error;
+        BOOL writeSucceeded = WriteFile(fileHandle, &score, (DWORD)sizeof(score), &bytesWritten, NULL) && (sizeof(score) == bytesWritten);
+        if (!writeSucceeded){
+            error = GetLastError();
+            // Pritn error for debug here
+        }
+        CloseHandle(fileHandle);
+        return true;
+    }
+    return false;
+}
+
 FileReadResult readFile(char* path) {
     HANDLE fileHandle = CreateFile(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     FileReadResult result = {};
@@ -146,6 +163,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         GameState state;
         state.isInitialized = false;
         state.readFileFunction = readFile;
+        state.writeScoreFunction = writeScoreToFile;
         // Timing
         LARGE_INTEGER startPerformanceCount;
         QueryPerformanceCounter(&startPerformanceCount);
