@@ -304,6 +304,6 @@ void drawNumber(uint32_t number, uint32_t* bufferMemory, const Image* font, floa
     }
     for (int i = 0; i < digitsToDraw; i++) {
         drawDigit((uint32_t*)bufferMemory, font, x + i * digitSeparation, y,
-            screenWidth, screenHeight, digits[MAX_DIGITS_DISPLAY - digitsToDraw + i], 1, GREY);
+            screenWidth, screenHeight, digits[MAX_DIGITS_DISPLAY - digitsToDraw + i], 1, color);
     }
 }

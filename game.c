@@ -39,10 +39,27 @@ void setNextDirection(GameState *state) {
     }
 }
 
+void addScoreToTotal(float mood, GameState *state, bool pickingUp) {
+    int score = 0;
+    switch (ceil(mood / MOOD_TIME)) {
+    case 3: {
+        score = pickingUp ? 1000 : 200;
+    }break;
+    case 2: {
+        score = pickingUp ? 500 : 100;
+    }break;
+    case 1: {
+        score = pickingUp ? 200: 50;
+    }break;
+    }
+    state->score += score;
+}
+
 void pickAndPlaceGuys(GameState* state) {
     for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
         if (state->guys[i].active) {
             if (state->guys[i].onElevator && (state->guys[i].desiredFloor == state->currentFloor)) {
+                addScoreToTotal(state->guys[i].mood, state, false);
                 state->guys[i] = {};
                 state->elevatorSpots[state->guys[i].elevatorSpot] = false;
                 state->dropOffFloor = state->currentFloor;
@@ -50,11 +67,16 @@ void pickAndPlaceGuys(GameState* state) {
             }
             else {
                 if (state->guys[i].currentFloor == state->currentFloor) {
+                    addScoreToTotal(state->guys[i].mood, state, true);
                     state->guys[i].onElevator = true;
                     state->guys[i].mood = MOOD_TIME * 3; // 3 to get all 4 possible mood state's ranges [0..3]
                     state->fullFloors[state->currentFloor] = false;
                     state->guys[i].currentFloor = -1;
-                    state->score += 624;
+
+
+                    if (state->score >= REQUIRED_SCORE * (state->currentLevel + 1) + (500 * state->currentLevel)) {
+                        state->currentLevel += 1;
+                    }
 
                     for (int s = 0; s < ELEVATOR_SPOTS; s++) {
                         if (!state->elevatorSpots[s]) {
@@ -169,6 +191,7 @@ void resetGame(GameState *state) {
     state->direction = 0;
     state->moving = false;
     state->dropOffFloor = -1;
+    state->currentLevel = 0;
 
     state->spawnTimer = 1.5f; // First guy should appear fast
     state->doorTimer = 0;
@@ -198,17 +221,28 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             }
         }break;        
         case GAME:{
+
             // Timers
+            // Doors
+            if (state->doorTimer > 0) {
+                state->doorTimer -= delta;
+            }
+            else if (state->doorTimer < 0) {
+                pickAndPlaceGuys(state);
+                state->doorTimer = 0;
+            }
             // Mood
-            for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-                if (state->guys[i].active) {
-                    state->guys[i].mood -= delta;
-                    if (state->guys[i].mood <= 0.0) {
-                        state->transitionInTimer = TRANSITION_TIME;
-                        state->transitionOutTimer = TRANSITION_TIME;
-                        state->scoreTimer = SCORE_TIME;
-                        state->currentScreen = SCORE;
-                        return;
+            if (!(state->doorTimer > 0)) { // Don't update patience when opening doors
+                for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
+                    if (state->guys[i].active) {
+                        state->guys[i].mood -= delta;
+                        if (state->guys[i].mood <= 0.0) {
+                            state->transitionInTimer = TRANSITION_TIME;
+                            state->transitionOutTimer = TRANSITION_TIME;
+                            state->scoreTimer = SCORE_TIME;
+                            state->currentScreen = SCORE;
+                            return;
+                        }
                     }
                 }
             }
@@ -216,18 +250,10 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             // Spawn
             state->spawnTimer -= delta;
             if (state->spawnTimer <= 0) {
-                state->spawnTimer = SPAWN_TIME;
+                state->spawnTimer = SPAWN_TIMES[state->currentLevel];
                 spawnNewGuy(state->guys, state->fullFloors, state->currentFloor);
             }
 #endif
-            // Doors
-            if (state->doorTimer > 0) {
-                state->doorTimer -= delta;
-            }
-            if (state->doorTimer < 0) {
-                pickAndPlaceGuys(state);
-                state->doorTimer = 0;
-            }
             // Drop Off
             if (state->dropOffTimer > 0) {
                 state->dropOffTimer -= delta;
@@ -313,7 +339,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
             for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
                 if (state->guys[j].active) {
-                    int mood = (3 - ceil(state->guys[j].mood / MOOD_TIME)) % 4; // TODO remove %4 once we die at the 0 mood.
+                    int mood = 3 - ceil(state->guys[j].mood / MOOD_TIME);
                     if (state->guys[j].onElevator) {
                         Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
                         drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
@@ -350,10 +376,11 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
             for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) { // TODO see if we can add this in to the other loop, once we have Z layering
                 if (state->guys[i].active) {
+                    int mood = 3 - ceil(state->guys[i].mood / MOOD_TIME);
                     if ((state->guys[i].currentFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
                         (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
                         Vector2i waitingGuyPos = { 10, 16 - floorYOffset + 40 };
-                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight);
+                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight, mood);
                         drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
                             (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 2);
                     }
@@ -371,7 +398,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
             // Bottom UI
             drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
-            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5, 5, screenWidth, screenHeight);
+            // -- Score
+            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5, 5, screenWidth, screenHeight, GREY);
+            // -- Elevator numbers
             if (state->currentFloor == 10) {
                 drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
                     screenWidth, screenHeight, 1);
@@ -382,6 +411,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
                     screenWidth, screenHeight, state->currentFloor);
             }
+            // --Level
+            drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 70, 5,
+                screenWidth, screenHeight, state->currentLevel, 1, GREY);
 
             // Transition In         
             if (state->transitionOutTimer > 0) {
@@ -440,8 +472,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             else {
                 if (state->scoreTimer > 0) {
                     state->scoreTimer -= delta;
-                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f, screenWidth, screenHeight, BLACK, true);
-                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 20, screenWidth, screenHeight, BLACK, true);
+                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f, screenWidth, screenHeight, GREY, true);
+                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 20, screenWidth, screenHeight, GREY, true);
                     state->writeScoreFunction((char *)& SCORE_PATH, state->maxScore);
                 }
                 else if (state->transitionOutTimer > 0) {

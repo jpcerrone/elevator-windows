@@ -12,6 +12,7 @@ static const int ELEVATOR_SPOTS = 5;
 static const float STARTING_SPEED = 150;
 static const int FLOOR_SEPARATION = 320;
 static int floorsY[11] = { 0, 320, 640, 960, 1280, 1600, 1920, 2240, 2560, 2880, 3200 };
+const static int REQUIRED_SCORE = 3000;
 
 static const char SCORE_PATH[MAX_PATH] = "maxScore";// MAX_PATH might be windows only
 
@@ -23,7 +24,7 @@ static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
     { -9, -37},
 };
 
-static const float SPAWN_TIME = 8.0f;
+static const float SPAWN_TIMES[13] = { 8, 6.5f, 5.0f, 5.5f, 4.0f, 3.6f, 3.2f, 3, 2.9f, 2.8f, 2.7f, 2.6f, 2.5f };
 static const float MOOD_TIME = 4.0f;
 static const float DOOR_TIME = 0.5f;
 static const float DROP_OFF_TIME = 1.0f;
@@ -59,6 +60,7 @@ struct GameState {
     float elevatorSpeed;
     int direction;
     bool moving;
+    int currentLevel;
 
     float spawnTimer;
     float doorTimer;
