@@ -283,9 +283,9 @@ void getDigitsFromNumber(uint32_t number, int* digits, int maxDigits) {
     }
 }
 
-void drawNumber(uint32_t number, uint32_t* bufferMemory, const Image* font, float x, float y, int screenWidth, int screenHeight, uint32_t color = BLACK, bool centered = false) {
+void drawNumber(uint32_t number, uint32_t* bufferMemory, const Image* font, float x, float y, int screenWidth, int screenHeight, uint32_t color = BLACK, bool centered = false, float spacing = 1.0) {
     const int MAX_DIGITS_DISPLAY = 6;
-    const float digitSeparation = 5.0f;
+    float digitSeparation =(float)( font->width / font->hframes + spacing);
     Assert(number < pow(10, MAX_DIGITS_DISPLAY));
     int digits[MAX_DIGITS_DISPLAY] = { };
     int digitsToDraw = MAX_DIGITS_DISPLAY;

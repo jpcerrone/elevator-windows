@@ -177,6 +177,7 @@ void initGameState(GameState *state) {
     state->images.arrows = loadBMP("../spr/arrow.bmp", state->readFileFunction, 2);
     state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
     state->images.numbersFont3px = loadBMP("../spr/m3x6Numbers.bmp", state->readFileFunction, 10);
+    state->images.numbersFont4px = loadBMP("../spr/4x6Numbers.bmp", state->readFileFunction, 10);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
 }
@@ -328,10 +329,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
             // Display buttons
             for (int j = 0; j < 10; j++) {
-                drawImage((uint32_t*)bitMapMemory, &state->images.button, state->images.button.height * 9.0f,
+		float buttonsPosX = state->images.button.width/(float)state->images.button.hframes * 9.0f;
+                drawImage((uint32_t*)bitMapMemory, &state->images.button, buttonsPosX, 
                     (float)state->images.button.height + state->images.button.height * j, screenWidth, screenHeight, state->floorStates[j]);
+		drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont4px, buttonsPosX + 6,
+				(float)state->images.button.height + state->images.button.height * j + 5, screenWidth, screenHeight, j, 1, state->floorStates[j] ? BLACK : GREY);
             }
-
             Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
             Vector2i floorIndicatorOffset = { 10, 40 }; // TODO: find proper offset from og game
 
@@ -400,6 +403,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
             // -- Score
             drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5, 5, screenWidth, screenHeight, GREY);
+	    // -- Level
+	    int xOffset = 0;
+	    if (state->currentFloor == 10){
+		    xOffset = -2;
+	    }
+	    drawNumber(state->currentFloor, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth/2.0f + 1, 5.0f, screenWidth, screenHeight, BLACK, true);
             // -- Elevator numbers
             if (state->currentFloor == 10) {
                 drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
