@@ -76,6 +76,7 @@ void pickAndPlaceGuys(GameState* state) {
 
                     if (state->score >= REQUIRED_SCORE * (state->currentLevel + 1) + (500 * state->currentLevel)) {
                         state->currentLevel += 1;
+			state->flashTextTimer = FLASH_TIME;
                     }
 
                     for (int s = 0; s < ELEVATOR_SPOTS; s++) {
@@ -162,6 +163,7 @@ void initGameState(GameState *state) {
     else {
         state->maxScore = 0;
     }
+    state->flashTextTimer = FLASH_TIME;
 
     state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
     state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
@@ -197,6 +199,7 @@ void resetGame(GameState *state) {
     state->spawnTimer = 1.5f; // First guy should appear fast
     state->doorTimer = 0;
     state->dropOffTimer = 0;
+    state->flashTextTimer = 0;
 
     memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
     memset(state->fullFloors, 0, sizeof(bool) * 10);
@@ -212,6 +215,16 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     switch (state->currentScreen) {
         case MENU:{
             fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+	    int flashPerSecond = 2;
+	    if (state->flashTextTimer > 0){
+		state->flashTextTimer -= flashPerSecond*delta;
+	    } else if(state->flashTextTimer <= 0){
+		    state->flashTextTimer = FLASH_TIME;
+	    }
+	    bool drawFlash = roundFloat(state->flashTextTimer*flashPerSecond) % 2;
+	    if (drawFlash){
+	        drawNumber(123, (uint32_t*)bitMapMemory,&state->images.numbersFont3px, 0,0, screenWidth, screenHeight, GREY);
+	    }
             for (int i = 0; i < 10; i++) {
                 if (input.buttons[i]) {
                     resetGame(state);
@@ -421,9 +434,16 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     screenWidth, screenHeight, state->currentFloor);
             }
             // --Level
-            drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 70, 5,
+	    int flashesPerSec = 2; 
+	    if (state->flashTextTimer > 0){
+		state->flashTextTimer -= delta;
+	    } else if (state->flashTextTimer < 0){
+		state->flashTextTimer = 0;
+	    }
+	    if (int(state->flashTextTimer * flashesPerSec) % 2 || state->flashTextTimer == 0){
+            	drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 70, 5,
                 screenWidth, screenHeight, state->currentLevel, 1, GREY);
-
+	    }
             // Transition In         
             if (state->transitionOutTimer > 0) {
                 drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight * state->transitionOutTimer), 0, 0, 0);

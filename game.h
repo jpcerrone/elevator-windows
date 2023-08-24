@@ -30,6 +30,7 @@ static const float DOOR_TIME = 0.5f;
 static const float DROP_OFF_TIME = 1.0f;
 static const float TRANSITION_TIME = 1.0f;
 static const float SCORE_TIME = 3.0f;
+static const float FLASH_TIME = 3.0;
 struct Guy {
     bool active;
 
@@ -68,6 +69,7 @@ struct GameState {
     float transitionInTimer;
     float transitionOutTimer;
     float scoreTimer;
+    float flashTextTimer;
 
     int dropOffFloor;
 
