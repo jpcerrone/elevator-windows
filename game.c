@@ -180,6 +180,8 @@ void initGameState(GameState *state) {
     state->images.door = loadBMP("../spr/door.bmp", state->readFileFunction, 2);
     state->images.numbersFont3px = loadBMP("../spr/m3x6Numbers.bmp", state->readFileFunction, 10);
     state->images.numbersFont4px = loadBMP("../spr/4x6Numbers.bmp", state->readFileFunction, 10);
+    state->images.uiLabels = loadBMP("../spr/uiLabels.bmp", state->readFileFunction, 4);
+    state->images.titleLabels = loadBMP("../spr/titleLabels.bmp", state->readFileFunction, 2);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
 }
@@ -215,6 +217,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     switch (state->currentScreen) {
         case MENU:{
             fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+        // NEGATIVE X WORKS; SCALING SOWRKS; BUT NO BOTH AT THE SAME TIME
+	    drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, -10, screenHeight/2, screenWidth, screenHeight, 0, 0 ,1, false);
 	    int flashPerSecond = 2;
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;
@@ -223,7 +227,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 	    }
 	    bool drawFlash = roundFloat(state->flashTextTimer*flashPerSecond) % 2;
 	    if (drawFlash){
-	        drawNumber(123, (uint32_t*)bitMapMemory,&state->images.numbersFont3px, 0,0, screenWidth, screenHeight, GREY);
+	        //drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, 0,0, screenWidth, screenHeight, 1, 0, 1);
 	    }
             for (int i = 0; i < 10; i++) {
                 if (input.buttons[i]) {
