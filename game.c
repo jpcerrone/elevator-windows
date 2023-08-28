@@ -217,8 +217,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     switch (state->currentScreen) {
         case MENU:{
             fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
-        // NEGATIVE X WORKS; SCALING SOWRKS; BUT NO BOTH AT THE SAME TIME
-	    drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, -10, screenHeight/2, screenWidth, screenHeight, 0, 0 ,1, false);
+            // Flipping not working
+			drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, true ,3, true);
 	    int flashPerSecond = 2;
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;
@@ -227,7 +227,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 	    }
 	    bool drawFlash = roundFloat(state->flashTextTimer*flashPerSecond) % 2;
 	    if (drawFlash){
-	        //drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, 0,0, screenWidth, screenHeight, 1, 0, 1);
+			drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, screenWidth/2.0f,screenHeight/2.0f - 20, screenWidth, screenHeight, 1, false, 1, true);
 	    }
             for (int i = 0; i < 10; i++) {
                 if (input.buttons[i]) {
