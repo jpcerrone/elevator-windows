@@ -97,6 +97,8 @@ struct GameState {
         Image door;
         Image numbersFont3px;
         Image numbersFont4px;
+	Image uiLabels;
+	Image titleLabels;
     };
     images_t images;
 };

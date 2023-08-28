@@ -1,6 +1,9 @@
 #include "graphics.h"
 #include "assertions.h"
 int roundFloat(float value) {
+    if(value < 0){
+	return (int)(value - 0.5f);
+    }
     return (int)(value + 0.5f);
 }
 
@@ -152,12 +155,13 @@ void drawDigit(uint32_t* bufferMemory, const Image* image, float x, float y, int
         bufferMemory += strideToNextRow;
     }
 }
-void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, bool flip = 0, int scale = 1) {
+void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, bool flip = 0, int scale = 1, bool centered = false) {
     // TODO: should x and y be ints?
+    // TODO: it may make sense to merge with drawNumber
     Assert(frame >= 0);
     Assert(scale >= 1);
     Assert(frame <= image->hframes);
-    // TODO: implement offset.
+    // NOTE: offset could be implemented here.
     //y += image->offset.y;
     //x += image->offset.x;
 
@@ -166,9 +170,10 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
         return;
     }
 
-
     int frameWidth = (image->width / image->hframes); // TODO: check handling image widths that are odd. (ie 23)  
-
+    if (centered) {
+        x = x - (frameWidth*scale / 2.0f);
+    }
     int sampleHeight = image->height;
     int sampleWidth = frameWidth ;
 
@@ -176,16 +181,13 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     int renderWidth = sampleWidth * scale;
 
     if (renderHeight + y > screenHeight) {
-        int diff = renderHeight + (int)y - screenHeight;
-        sampleHeight -= diff / scale;
-        renderHeight = (int)(screenHeight - y);
+        int diff = (int)(renderHeight + y - screenHeight);
+        sampleHeight -= diff / scale; // TODO (float) diff
+        renderHeight = (int)(screenHeight - (y));
     }
     if (renderWidth + x > screenWidth) {
-#if 0 // Not needed for this game
-        int diff = renderWidth + x - sampleWidth;
-        sampleWidth -= diff / scale;
-#endif
-        renderWidth = (int)(screenWidth - x);
+        //int diff = renderWidth + x - screenWidth;
+        renderWidth = (int)(screenWidth - (x)); // NOTE removed clamp(x) here...
     }    
     // Go to upper left corner.
     bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clamp(y)))));
@@ -196,7 +198,6 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     
     if (x < 0) {
         renderWidth += roundFloat(x); // Reducing width
-        pixelPointer -= roundFloat(x); // Advancing from where to sample
     }
     if (y < 0) {
         renderHeight += roundFloat(y); // Reducing height
@@ -208,11 +209,21 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     if (strideToNextRow < 0) {
         strideToNextRow = 0;
     }
-
     for (int j = 0; j < renderHeight; j++) {
+        int p = 0;
         pixelPointer += frameWidth * frame; // Advance to proper frame
         if (flip) {
-            pixelPointer += frameWidth;
+            pixelPointer += frameWidth -1;
+            p += frameWidth - 1;
+        }
+        if (x < 0) {
+	    if (flip){
+		pixelPointer += roundFloat(x/scale);
+		p += roundFloat(x/scale);
+	    } else{
+            pixelPointer -= roundFloat(x/scale); // Advancing from where to sample
+            p -= roundFloat(x/scale);
+	    }
         }
         for (int i = 0; i < renderWidth; i++) {
             float alphaValue = (*pixelPointer >> 24) / 255.0f;
@@ -233,31 +244,38 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
             if (scale == 1) {
                 if (flip) {
                     pixelPointer--; // right to left
+                    p--;
                 }
                 else {
                     pixelPointer++; // left to right
+                    p++;
                 }
             }
             else {
-                if ((i % scale) == 1) { // Advance pointer every "scale" steps
+                if ((i % scale) == scale - 1) { // Advance pointer every "scale" steps
                     if (flip) {
-                        pixelPointer--; // right to left
+                        pixelPointer--; 
+                        p--;// right to left
                     }
                     else {
-                        pixelPointer++; // left to right
+                        pixelPointer++; 
+                        p++; // left to right
                     }
                 }
             }
         }
         if (flip) {
             pixelPointer += frameWidth;
+            p += frameWidth;
         }
-        pixelPointer += image->width - sampleWidth*(frame+1); // Remainder to get to end of row
+		pixelPointer += (int)(frameWidth - p); // Advance till end of frame
+        pixelPointer += +image->width - frameWidth * (frame + 1); // Advance till end of current row in the image
+
         if (scale == 1) {
             pixelPointer -= 2 * image->width;
         }
         else {
-            if ((j % scale) == 1) {
+            if ((j % scale) == scale-1) {
                 pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted) TODO: just load them in the right order
             }
             else {
