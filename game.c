@@ -217,15 +217,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
     switch (state->currentScreen) {
         case MENU:{
-<<<<<<< HEAD
-            fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
-            // Flipping not working
-			drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, true ,3, true);
-=======
 
 	    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
             drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, false ,3, true);
->>>>>>> circle
 	    int flashPerSecond = 2;
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;

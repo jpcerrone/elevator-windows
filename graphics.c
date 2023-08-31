@@ -186,12 +186,7 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
         renderHeight = (int)(screenHeight - (y));
     }
     if (renderWidth + x > screenWidth) {
-<<<<<<< HEAD
-        //int diff = renderWidth + x - screenWidth;
-        renderWidth = (int)(screenWidth - (x)); // NOTE removed clamp(x) here...
-=======
         renderWidth = (int)(screenWidth - (x)); 
->>>>>>> circle
     }    
     // Go to upper left corner.
     bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clamp(y)))));
@@ -221,19 +216,11 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
             p += frameWidth - 1;
         }
         if (x < 0) {
-<<<<<<< HEAD
-=======
-	    // Advance sampling starting point
->>>>>>> circle
 	    if (flip){
 		pixelPointer += roundFloat(x/scale);
 		p += roundFloat(x/scale);
 	    } else{
-<<<<<<< HEAD
-            pixelPointer -= roundFloat(x/scale); // Advancing from where to sample
-=======
             pixelPointer -= roundFloat(x/scale);
->>>>>>> circle
             p -= roundFloat(x/scale);
 	    }
         }
