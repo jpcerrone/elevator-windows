@@ -202,6 +202,7 @@ void resetGame(GameState *state) {
     state->doorTimer = 0;
     state->dropOffTimer = 0;
     state->flashTextTimer = 0;
+    state->circleFocusTimer = 0.0;
 
     memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
     memset(state->fullFloors, 0, sizeof(bool) * 10);
@@ -216,9 +217,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
     switch (state->currentScreen) {
         case MENU:{
-            fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
-            // Flipping not working
-			drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, true ,3, true);
+
+	    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
+            drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, false ,3, true);
 	    int flashPerSecond = 2;
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;
@@ -241,6 +242,40 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
         case GAME:{
 
             // Timers
+	    // Circle Focus
+	    	int radius = 13;
+        	if (state->circleFocusTimer > 2.5) {
+                	state->circleFocusTimer -= delta;
+			return;
+	    } else if (state->circleFocusTimer > 2.2) {
+	    	state->circleFocusTimer -= delta;
+	    	float focusPercentage = (state->circleFocusTimer- 2.2f)*1.0f/0.3f; 
+	    	drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*screenHeight/2 + (1 - focusPercentage) * radius), screenWidth, screenHeight);
+	    	return;
+
+		}
+	    	else if (state->circleFocusTimer > 1.4) {
+		    	state->circleFocusTimer -= delta;
+			return;
+	    	}
+		else if (state->circleFocusTimer > 1.0) {
+			state->circleFocusTimer -= delta;
+			float focusPercentage = (state->circleFocusTimer-1.0f)/0.4f; 
+			drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*radius), screenWidth, screenHeight);
+			return;
+		}
+		else if (state->circleFocusTimer > 0){
+			state->circleFocusTimer -= delta;
+			return;
+		}
+		else if (state->circleFocusTimer < 0) {// TODO this could go to 0
+		state->transitionInTimer = TRANSITION_TIME;
+	             state->transitionOutTimer = TRANSITION_TIME;	                     state->scoreTimer = SCORE_TIME;
+              state->currentScreen = SCORE;
+		state->circleFocusTimer = 0;
+		return;
+            }
+	    
             // Doors
             if (state->doorTimer > 0) {
                 state->doorTimer -= delta;
@@ -255,11 +290,13 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     if (state->guys[i].active) {
                         state->guys[i].mood -= delta;
                         if (state->guys[i].mood <= 0.0) {
-                            state->transitionInTimer = TRANSITION_TIME;
-                            state->transitionOutTimer = TRANSITION_TIME;
-                            state->scoreTimer = SCORE_TIME;
-                            state->currentScreen = SCORE;
-                            return;
+				state->circleFocusTimer = CIRCLE_TIME;
+				if (state->guys[i].onElevator){
+					state->circleSpot = sum(sum(Vector2i{screenWidth/2, screenHeight/2}, elevatorSpotsPos[state->guys[i].elevatorSpot]), Vector2i{11,32});
+				} else{
+				state->circleSpot ={ screenWidth-27, (state->guys[i].currentFloor+1)*16 +7};
+				}
+                    return;
                         }
                     }
                 }
@@ -454,7 +491,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 state->transitionOutTimer -= delta;
             }
 
-            // Debug stuff
+	    // Debug stuff
 #ifdef SHOWGUYSSTATS
             static const int MAX_GUYS_STRING_SIZE = 19 * MAX_GUYS_ON_SCREEN; // sizeof([g%d: c:%d d:%d e:%d]) * MAX_GUYS_ON_SCREEN
             char guysString[MAX_GUYS_STRING_SIZE];

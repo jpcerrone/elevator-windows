@@ -186,8 +186,7 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
         renderHeight = (int)(screenHeight - (y));
     }
     if (renderWidth + x > screenWidth) {
-        //int diff = renderWidth + x - screenWidth;
-        renderWidth = (int)(screenWidth - (x)); // NOTE removed clamp(x) here...
+        renderWidth = (int)(screenWidth - (x)); 
     }    
     // Go to upper left corner.
     bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clamp(y)))));
@@ -221,7 +220,7 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
 		pixelPointer += roundFloat(x/scale);
 		p += roundFloat(x/scale);
 	    } else{
-            pixelPointer -= roundFloat(x/scale); // Advancing from where to sample
+            pixelPointer -= roundFloat(x/scale);
             p -= roundFloat(x/scale);
 	    }
         }
@@ -287,6 +286,23 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     }
 }
 
+void drawFocusCircle(void* bufferMemory, int x, int y, int radius, int screenWidth, int screenHeight){
+	uint32_t* pixel = (uint32_t*) bufferMemory;
+    pixel += screenWidth * (screenHeight-1); //Advance till the end //TODO can this be stored differently?
+	for(int j=0; j < screenHeight; j++){
+		for(int i=0; i < screenWidth; i++){
+			Vector2i circleCenter = {x,y};
+			Vector2i point = {i, j};
+			if (distance(circleCenter, point) >= radius){
+				// draw black
+				*pixel = BLACK;	
+			}
+			pixel++;
+		}
+        pixel -= 2 * screenWidth;
+	}
+	return;
+}
 void getDigitsFromNumber(uint32_t number, int* digits, int maxDigits) {
     int currentDigit = 0;
     int currentNumber = number;
