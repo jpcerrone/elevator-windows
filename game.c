@@ -243,27 +243,29 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
             // Timers
 	    // Circle Focus
-	    	int radius = 32;
-        	if (state->circleFocusTimer > 1.5) {
+	    	int radius = 13;
+        	if (state->circleFocusTimer > 2.5) {
                 	state->circleFocusTimer -= delta;
 			return;
-	    } else if (state->circleFocusTimer > 1.0) {
+	    } else if (state->circleFocusTimer > 2.2) {
 	    	state->circleFocusTimer -= delta;
-	    	float focusPercentage = (state->circleFocusTimer- 1.0)*1.0f/0.5f; // TODO parameterize 005 timer
-	    	drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, focusPercentage*screenHeight/2 + (1 - focusPercentage) * radius, screenWidth, screenHeight);
+	    	float focusPercentage = (state->circleFocusTimer- 2.2f)*1.0f/0.3f; 
+	    	drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*screenHeight/2 + (1 - focusPercentage) * radius), screenWidth, screenHeight);
 	    	return;
 
 		}
-	    	else if (state->circleFocusTimer > 0.5) {
+	    	else if (state->circleFocusTimer > 1.4) {
 		    	state->circleFocusTimer -= delta;
 			return;
 	    	}
-		else if (state->circleFocusTimer > 0) {
+		else if (state->circleFocusTimer > 1.0) {
 			state->circleFocusTimer -= delta;
-			float focusPercentage = (state->circleFocusTimer)*1.0f/0.5f; // TODO parameterize 005 timer
-	
-			drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, focusPercentage*radius, screenWidth, screenHeight);
-	
+			float focusPercentage = (state->circleFocusTimer-1.0f)/0.4f; 
+			drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*radius), screenWidth, screenHeight);
+			return;
+		}
+		else if (state->circleFocusTimer > 0){
+			state->circleFocusTimer -= delta;
 			return;
 		}
 		else if (state->circleFocusTimer < 0) {// TODO this could go to 0
@@ -290,9 +292,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                         if (state->guys[i].mood <= 0.0) {
 				state->circleFocusTimer = CIRCLE_TIME;
 				if (state->guys[i].onElevator){
-					state->circleSpot = {screenWidth/2, screenHeight/2};
+					state->circleSpot = sum(sum(Vector2i{screenWidth/2, screenHeight/2}, elevatorSpotsPos[state->guys[i].elevatorSpot]), Vector2i{11,32});
 				} else{
-				state->circleSpot ={ screenWidth-24, (state->guys[i].currentFloor+1)*16 +8};
+				state->circleSpot ={ screenWidth-27, (state->guys[i].currentFloor+1)*16 +7};
 				}
                     return;
                         }
