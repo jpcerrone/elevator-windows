@@ -220,7 +220,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
 	    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
             drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, false ,3, true);
-	    int flashPerSecond = 2;
+	    int flashPerSecond = 2; //TODO FIX this doesnt really work
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;
 	    } else if(state->flashTextTimer <= 0){
@@ -228,7 +228,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 	    }
 	    bool drawFlash = roundFloat(state->flashTextTimer*flashPerSecond) % 2;
 	    if (drawFlash){
-			drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, screenWidth/2.0f,screenHeight/2.0f - 20, screenWidth, screenHeight, 1, false, 1, true);
+			drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, screenWidth/2.0f,screenHeight/2.0f - 40, screenWidth, screenHeight, 1, false, 1, true);
 	    }
             for (int i = 0; i < 10; i++) {
                 if (input.buttons[i]) {
@@ -455,8 +455,11 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 
             // Bottom UI
             drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+
             // -- Score
-            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 5, 5, screenWidth, screenHeight, GREY);
+            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 40, 5, screenWidth, screenHeight, GREY);
+	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 5, 5, screenWidth, screenHeight);
+    
 	    // -- Level
 	    int xOffset = 0;
 	    if (state->currentFloor == 10){
