@@ -3,7 +3,7 @@
 #include "graphics.h"
 #include "math.h"
 #include "vector2i.c"
-#include "audio.h"
+#include "audio.c"
 
 static const uint32_t GREY = 0xFF686868;
 static const uint32_t BLACK = 0xFF000000;

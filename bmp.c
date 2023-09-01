@@ -1,9 +1,9 @@
 #include "bmp.h"
 Image loadBMP(char* path, readFile_t* readFunction, int hframes = 1) {
     FileReadResult result = readFunction(path);
-    char failedResource[256];
     Image retImage = {};
     if (result.memory == nullptr) {
+    	char failedResource[256];
         int writtenPrefix = sprintf_s(failedResource, 256, "Failure loading resource ");
         writtenPrefix += sprintf_s(failedResource + writtenPrefix, 256, path);
         sprintf_s(failedResource + writtenPrefix, 256, "\n");

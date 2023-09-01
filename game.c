@@ -9,6 +9,7 @@
 #include "intrinsics.h"
 #include "assertions.h"
 #include "bmp.c"
+#include "audio.c"
 
 void setNextDirection(GameState *state) {
     // Get next destination
@@ -183,7 +184,7 @@ void initGameState(GameState *state) {
     state->images.uiLabels = loadBMP("../spr/uiLabels.bmp", state->readFileFunction, 4);
     state->images.titleLabels = loadBMP("../spr/titleLabels.bmp", state->readFileFunction, 2);
 
-    state->audioFiles.click = loadWavFile("../sfx/click.wav", state->readFileFunction);
+    state->audioFiles.click = loadWavFile("../sfx/arrival.wav", state->readFileFunction);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
 }
