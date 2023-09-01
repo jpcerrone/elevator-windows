@@ -3,6 +3,7 @@
 #include "graphics.h"
 #include "math.h"
 #include "vector2i.c"
+#include "audio.h"
 
 static const uint32_t GREY = 0xFF686868;
 static const uint32_t BLACK = 0xFF000000;
@@ -105,6 +106,11 @@ struct GameState {
 	Image titleLabels;
     };
     images_t images;
+
+    struct audioFiles_t {
+	    AudioFile click;
+    };
+    audioFiles_t audioFiles;
 };
 
 struct GameInput {
