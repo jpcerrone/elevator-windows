@@ -111,6 +111,8 @@ struct GameState {
 	    AudioFile click;
     };
     audioFiles_t audioFiles;
+
+    float sampleOffset;
 };
 
 struct GameInput {

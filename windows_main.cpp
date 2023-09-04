@@ -6,6 +6,13 @@
 #include "assertions.h"
 #include "platform.h"
 
+#include <Audioclient.h>
+#include <Audiopolicy.h>
+#include <initguid.h>
+#include <shobjidl.h>
+#include <audioclient.h>
+#include <mmdeviceapi.h>
+
 static const int desiredFPS = 60;
 
 static bool gameRunning;
@@ -76,6 +83,82 @@ void freeFileMemory(void* memory)
     VirtualFree(memory, 0, MEM_RELEASE);
 }
 
+// --- AUDIO
+#define REFTIMES_PER_SEC 10'000'000 // 100 nanoscend units, 1 seconds
+#define REFTIMES_PER_MILLISEC 10'000
+struct AudioState_t
+{
+    WAVEFORMATEX *myFormat;
+    IAudioClient *audioClient;
+    IAudioRenderClient *renderClient;
+    BYTE *buffer;
+    UINT32 bufferFrameCount;
+};
+static AudioState_t AudioState;
+void initWASAPI()
+{
+    int framesOfLatency = 2; // 1 frame of latency seems to not be possible.
+    int bufferSizeInSeconds = (int)(REFTIMES_PER_SEC / (desiredFPS / (float)framesOfLatency));
+
+    HRESULT hr;
+    IMMDeviceEnumerator *enumerator;
+    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
+    Assert(SUCCEEDED(hr));
+
+    IMMDevice *device;
+    hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+    Assert(SUCCEEDED(hr));
+
+    hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void **)&(AudioState.audioClient));
+    Assert(SUCCEEDED(hr));
+
+    hr = AudioState.audioClient->GetMixFormat(&AudioState.myFormat);
+    Assert(SUCCEEDED(hr));
+
+    WAVEFORMATEXTENSIBLE *waveFormatExtensible = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(AudioState.myFormat);
+    waveFormatExtensible->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+    waveFormatExtensible->Format.wBitsPerSample = 16;
+    waveFormatExtensible->Format.nBlockAlign = (AudioState.myFormat->wBitsPerSample / 8) * AudioState.myFormat->nChannels;
+    waveFormatExtensible->Format.nAvgBytesPerSec = waveFormatExtensible->Format.nSamplesPerSec * waveFormatExtensible->Format.nBlockAlign;
+    waveFormatExtensible->Samples.wValidBitsPerSample = 16;
+
+    hr = AudioState.audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferSizeInSeconds, 0, AudioState.myFormat, NULL);
+    Assert(SUCCEEDED(hr));
+
+    hr = AudioState.audioClient->GetBufferSize(&AudioState.bufferFrameCount);
+    Assert(SUCCEEDED(hr));
+
+    hr = AudioState.audioClient->GetService(IID_PPV_ARGS(&AudioState.renderClient));
+    Assert(SUCCEEDED(hr));
+
+    AudioState.buffer = (BYTE *)VirtualAlloc(0, waveFormatExtensible->Format.nAvgBytesPerSec, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    Assert(AudioState.buffer);
+
+    hr = AudioState.audioClient->Start();
+    Assert(SUCCEEDED(hr));
+}
+void fillWASAPIBuffer(int framesToWrite)
+{
+    // Grab the next empty buffer from the audio device.
+    BYTE *renderBuffer;
+    HRESULT hr = AudioState.renderClient->GetBuffer(framesToWrite, &renderBuffer);
+    Assert(SUCCEEDED(hr));
+
+    int16_t *renderSample = (int16_t *)renderBuffer;
+    int16_t *inputSample = (int16_t *)AudioState.buffer;
+    for (int i = 0; i < framesToWrite; i++)
+    {
+        *renderSample = *inputSample;
+        *(renderSample + 1) = *(inputSample + 1);
+        renderSample += 2;
+        inputSample += 2;
+    }
+
+    hr = AudioState.renderClient->ReleaseBuffer(framesToWrite, 0);
+    Assert(SUCCEEDED(hr));
+}
+//---
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT returnVal = 0;
@@ -133,6 +216,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     void* bitMapMemory;
     bitMapMemory = VirtualAlloc(0, nativeRes.width * nativeRes.height * 4 /*(4Bytes(32b) for color)*/, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
+        HRESULT init = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    Assert(SUCCEEDED(init));
 	// Register the window class.
 	const wchar_t CLASS_NAME[] = L"Elevator";
 
@@ -182,6 +267,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         LARGE_INTEGER performanceFrequency;
         QueryPerformanceFrequency(&performanceFrequency);
 
+	initWASAPI();
         while (gameRunning) {
 
             // Process Messages
@@ -238,12 +324,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                 }
 
             }
+	    UINT32 numFramesPadding;
+            HRESULT hr = AudioState.audioClient->GetCurrentPadding(&numFramesPadding);
+            Assert(SUCCEEDED(hr));
+            UINT32 numFramesAvailable = AudioState.bufferFrameCount - numFramesPadding;
+
             float delta = 1.0f / (float)desiredFPS;
             // Render
-            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &state, delta);
+            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &state, numFramesAvailable, AudioState.buffer, AudioState.myFormat->nSamplesPerSec, delta);
             StretchDIBits(windowDeviceContext, 0, 0, screenRes.width, screenRes.height, 0, 0,
                 nativeRes.width, nativeRes.height, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
 
+            fillWASAPIBuffer(numFramesAvailable);
             // Timing
             LARGE_INTEGER endPerformanceCount = getEndPerformanceCount();
             float elapsedSeconds = getEllapsedSeconds(endPerformanceCount, startPerformanceCount, performanceFrequency);

@@ -187,6 +187,7 @@ void initGameState(GameState *state) {
     state->audioFiles.click = loadWavFile("../sfx/arrival.wav", state->readFileFunction);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
+    state->sampleOffset = 0;
 }
 
 void resetGame(GameState *state) {
@@ -214,10 +215,29 @@ void resetGame(GameState *state) {
     }
 }
 
-void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, float delta) {
+void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, int samplesPerSecond, float delta) {
     if (!state->isInitialized) {
         initGameState(state);
     }
+
+    // audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
+    uint16_t* currentSample = (uint16_t*)audioBuffer;
+    int frequency = 220; // Cycles per second
+    int samplesPerCycle = samplesPerSecond/frequency;
+    int16_t volume = 0;
+    int startingSample = (int)(state->sampleOffset * samplesPerCycle); 
+    for(int i=startingSample; i < (audioFramesAvailable + startingSample); i++){
+	    if ((i % samplesPerCycle) < (samplesPerCycle/2)){ 
+		volume = 5000;
+	    } else{
+		volume = -5000;
+	    }
+	    *currentSample = volume;
+	    currentSample++;
+	    *currentSample = volume;
+	    currentSample++;
+    }
+    state->sampleOffset = (float)((startingSample + audioFramesAvailable + 1) % samplesPerCycle) / samplesPerCycle; 
     switch (state->currentScreen) {
         case MENU:{
 
