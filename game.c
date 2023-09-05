@@ -457,14 +457,15 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
 
             // -- Score
-            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 40, 5, screenWidth, screenHeight, GREY);
-	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 5, 5, screenWidth, screenHeight);
+	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 4, 5, screenWidth, screenHeight);
+            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 29, 5, screenWidth, screenHeight, GREY);
     
 	    // -- Level
 	    int xOffset = 0;
 	    if (state->currentFloor == 10){
 		    xOffset = -2;
 	    }
+
 	    drawNumber(state->currentFloor, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth/2.0f + 1, 5.0f, screenWidth, screenHeight, BLACK, true);
             // -- Elevator numbers
             if (state->currentFloor == 10) {
@@ -478,6 +479,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     screenWidth, screenHeight, state->currentFloor);
             }
             // --Level
+	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 129, 5, screenWidth, screenHeight, 1);
 	    int flashesPerSec = 2; 
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= delta;
@@ -485,7 +487,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		state->flashTextTimer = 0;
 	    }
 	    if (int(state->flashTextTimer * flashesPerSec) % 2 || state->flashTextTimer == 0){
-            	drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 70, 5,
+            	drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 74, 5,
                 screenWidth, screenHeight, state->currentLevel, 1, GREY);
 	    }
             // Transition In         
@@ -545,8 +547,10 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             else {
                 if (state->scoreTimer > 0) {
                     state->scoreTimer -= delta;
-                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f, screenWidth, screenHeight, GREY, true);
-                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 20, screenWidth, screenHeight, GREY, true);
+	    	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, screenWidth/2, screenHeight/2.0f + 20, screenWidth, screenHeight, 2, 0, 1, true);
+	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, screenWidth/2, screenHeight/2 - 20, screenWidth, screenHeight, 3, 0, 1 , true);
+                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f + 10, screenWidth, screenHeight, GREY, true);
+                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 30, screenWidth, screenHeight, GREY, true);
                     state->writeScoreFunction((char *)& SCORE_PATH, state->maxScore);
                 }
                 else if (state->transitionOutTimer > 0) {
