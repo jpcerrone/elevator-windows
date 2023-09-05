@@ -184,7 +184,7 @@ void initGameState(GameState *state) {
     state->images.uiLabels = loadBMP("../spr/uiLabels.bmp", state->readFileFunction, 4);
     state->images.titleLabels = loadBMP("../spr/titleLabels.bmp", state->readFileFunction, 2);
 
-    state->audioFiles.click = loadWavFile("../sfx/arrival.wav", state->readFileFunction);
+    state->audioFiles.click = loadWavFile("../sfx/click.wav", state->readFileFunction);
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
     state->sampleOffset = 0;
@@ -221,23 +221,29 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
     }
 
     // audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
+    int samplesAvailable = audioFramesAvailable * 2;
     uint16_t* currentSample = (uint16_t*)audioBuffer;
-    int frequency = 220; // Cycles per second
-    int samplesPerCycle = samplesPerSecond/frequency;
-    int16_t volume = 0;
-    int startingSample = (int)(state->sampleOffset * samplesPerCycle); 
-    for(int i=startingSample; i < (audioFramesAvailable + startingSample); i++){
-	    if ((i % samplesPerCycle) < (samplesPerCycle/2)){ 
-		volume = 5000;
-	    } else{
-		volume = -5000;
-	    }
-	    *currentSample = volume;
+    int startingSample = (int)(state->sampleOffset * state->audioFiles.click.sampleCount); 
+    uint16_t* sourceSample = state->audioFiles.click.samples + startingSample;
+    for(int i=startingSample; i < (startingSample + samplesAvailable); i+=2){
+	    if (i >= state->audioFiles.click.sampleCount){
+		sourceSample = state->audioFiles.click.samples + (i -  state->audioFiles.click.sampleCount); //Might not be necesary, not hitting ATM
+        *currentSample = 0;
+	    sourceSample++;
 	    currentSample++;
-	    *currentSample = volume;
+	    *currentSample = 0;
+	    sourceSample++;
+	    currentSample++;
+        continue;
+	    }
+	    *currentSample = *(sourceSample);
+	    sourceSample++;
+	    currentSample++;
+	    *currentSample = *(sourceSample);
+	    sourceSample++;
 	    currentSample++;
     }
-    state->sampleOffset = (float)((startingSample + audioFramesAvailable + 1) % samplesPerCycle) / samplesPerCycle; 
+    state->sampleOffset = (float)(((startingSample + samplesAvailable + 1) % state->audioFiles.click.sampleCount) / state->audioFiles.click.sampleCount); 
     switch (state->currentScreen) {
         case MENU:{
 
