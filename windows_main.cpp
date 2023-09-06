@@ -108,8 +108,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Vector2i nativeRes = { 160, 176 };
     int scalingFactor = 4;
 
+    Vector2i windowsScreenRes = {GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+    // This already considers Window's scaling factor (ie 125%).
+
     Vector2i screenRes = { nativeRes.width * scalingFactor, nativeRes.height * scalingFactor };
-    Vector2i origin = { (1920 - screenRes.width)/2, (1080 - screenRes.height) / 2 }; // TODO: query screen resolution instead of hardcoding 1920x1080.
+    Vector2i origin = { (windowsScreenRes.width - screenRes.width)/2, (windowsScreenRes.height - screenRes.height) / 2 };
     BITMAPINFO bitmapInfo;
     BITMAPINFOHEADER bmInfoHeader = {};
     bmInfoHeader.biSize = sizeof(bmInfoHeader);
