@@ -87,7 +87,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		} break;
 	case WM_SETCURSOR: {
 	    SetCursor(cursor);
-	}
+	} break;
         case WM_CLOSE: {
             gameRunning = false;
             DestroyWindow(hwnd);
@@ -111,6 +111,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     MMRESULT canQueryEveryMs = timeBeginPeriod(1);
     Assert(canQueryEveryMs == TIMERR_NOERROR);
 
+    		
     Vector2i nativeRes = { 160, 176 };
     int scalingFactor = 4;
 
@@ -140,7 +141,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
 	wc.lpszClassName = (LPCSTR)CLASS_NAME;
-
+	cursor = LoadCursor(0, IDC_ARROW);
+	wc.hCursor = cursor;// class cursor
+	
 	RegisterClass(&wc);
     RECT desiredClientSize;
     desiredClientSize.left = 0;
