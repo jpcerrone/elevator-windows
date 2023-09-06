@@ -10,6 +10,9 @@ static const int desiredFPS = 60;
 
 static bool gameRunning;
 
+static HCURSOR cursor;
+WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
+
 LARGE_INTEGER getEndPerformanceCount() {
     LARGE_INTEGER endPerformanceCount;
     QueryPerformanceCounter(&endPerformanceCount);
@@ -82,6 +85,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 
 		} break;
+	case WM_SETCURSOR: {
+	    SetCursor(cursor);
+	}
         case WM_CLOSE: {
             gameRunning = false;
             DestroyWindow(hwnd);
