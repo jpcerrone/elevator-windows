@@ -112,7 +112,8 @@ struct GameState {
     };
     audioFiles_t audioFiles;
 
-    float sampleOffset;
+    float sampleOffset; //TODO delete
+    AudioClip clips[10];
 };
 
 struct GameInput {

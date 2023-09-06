@@ -331,7 +331,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
             float delta = 1.0f / (float)desiredFPS;
             // Render
-            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &state, numFramesAvailable, AudioState.buffer, AudioState.myFormat->nSamplesPerSec, delta);
+            updateAndRender(bitMapMemory, nativeRes.width, nativeRes.height, newInput, &state, numFramesAvailable, AudioState.buffer, delta);
             StretchDIBits(windowDeviceContext, 0, 0, screenRes.width, screenRes.height, 0, 0,
                 nativeRes.width, nativeRes.height, bitMapMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
 

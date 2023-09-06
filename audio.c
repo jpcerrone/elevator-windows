@@ -2,7 +2,7 @@
 
 struct AudioFile{
 	uint16_t* samples;
-	int32_t sampleCount;
+	uint32_t sampleCount;
 };
 
 AudioFile loadWavFile(char* path, readFile_t* readFunction){
@@ -28,3 +28,10 @@ AudioFile loadWavFile(char* path, readFile_t* readFunction){
 
 
 }
+
+struct AudioClip{
+	bool active;
+	AudioFile* file;
+	float progress;
+	float volume;
+};

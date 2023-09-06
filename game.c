@@ -188,6 +188,50 @@ void initGameState(GameState *state) {
     // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
     state->sampleOffset = 0;
+    memset(state->clips, 0, sizeof(state->clips)); 
+}
+
+void renderAudio(uint8_t* globalAudioBuffer, int numFramesAvailable, AudioClip* clips){
+	// TODO clear to zero tghe numberFramesAvailable first
+	memset(globalAudioBuffer, 0, numFramesAvailable * 2 * 16 / 8);
+	for(int i=0; i < 10; i++){
+		if (clips[i].active){
+			/// audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
+    			int samplesAvailable = numFramesAvailable * 2;
+    			uint16_t* currentSample = (uint16_t*)globalAudioBuffer;
+    			uint32_t startingSample = (uint32_t)(clips[i].progress * clips[i].file->sampleCount); 
+    			uint16_t* sourceSample = clips[i].file->samples + startingSample;
+			uint32_t endingSample = min(startingSample + samplesAvailable, clips[i].file->sampleCount);
+    			for(uint32_t s=startingSample; s < endingSample; s+=2){
+				/* might work for looping|
+	    			if (s >= clips[i].file->sampleCount){
+		    			sourceSample = clips[i].file->samples + (s -  clips[i].file->sampleCount);
+     				}
+				*/
+	    			*currentSample += roundFloat(*(sourceSample)*clips[i].volume); 
+                    char testOut[100];
+                    sprintf(testOut, "sourceSample:%d, currentSample:%d\n", *sourceSample, *currentSample);
+                    OutputDebugStringA(testOut);
+                    //*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
+	    			sourceSample++;
+	    			currentSample++;
+                    *currentSample += roundFloat(*(sourceSample) * clips[i].volume);
+	    			//*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
+	    			sourceSample++;
+	    			currentSample++;
+    			}
+    			clips[i].progress = (endingSample + 1) / (float)clips[i].file->sampleCount; 
+			if(clips[i].progress >= 1.0){
+				clips[i] = {};
+			}
+            /*
+        char offOut[100];
+    sprintf(offOut, "off:%f - strtSam:%d - samAva:%d - samCount:%d\n", clips[i].progress, startingSample, samplesAvailable, clips[i].file->sampleCount);
+    OutputDebugStringA(offOut);
+   		*/
+        }
+	}
+    	return;
 }
 
 void resetGame(GameState *state) {
@@ -215,36 +259,24 @@ void resetGame(GameState *state) {
     }
 }
 
-void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, int samplesPerSecond, float delta) {
+void playSound(AudioClip *clips, AudioFile *file, float volume = 1.0f){
+	for(int i=0; i < 10; i++){
+		if (!clips[i].active){
+			clips[i].active = true;
+			clips[i].file = file;
+			clips[i].progress = 0;
+			clips[i].volume = volume;
+			break;
+
+		}
+	}
+}
+void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, float delta) {
     if (!state->isInitialized) {
         initGameState(state);
-    }
-
-    // audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
-    int samplesAvailable = audioFramesAvailable * 2;
-    uint16_t* currentSample = (uint16_t*)audioBuffer;
-    int startingSample = (int)(state->sampleOffset * state->audioFiles.click.sampleCount); 
-    uint16_t* sourceSample = state->audioFiles.click.samples + startingSample;
-    for(int i=startingSample; i < (startingSample + samplesAvailable); i+=2){
-	    if (i >= state->audioFiles.click.sampleCount){
-		sourceSample = state->audioFiles.click.samples + (i -  state->audioFiles.click.sampleCount); //Might not be necesary, not hitting ATM
-        *currentSample = 0;
-	    sourceSample++;
-	    currentSample++;
-	    *currentSample = 0;
-	    sourceSample++;
-	    currentSample++;
-        continue;
-	    }
-	    *currentSample = *(sourceSample);
-	    sourceSample++;
-	    currentSample++;
-	    *currentSample = *(sourceSample);
-	    sourceSample++;
-	    currentSample++;
-    }
-    state->sampleOffset = (float)(((startingSample + samplesAvailable + 1) % state->audioFiles.click.sampleCount) / state->audioFiles.click.sampleCount); 
-    switch (state->currentScreen) {
+            }
+    renderAudio(audioBuffer, audioFramesAvailable, state->clips);
+        switch (state->currentScreen) {
         case MENU:{
 
 	    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
@@ -353,6 +385,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
                         continue;
                     }
+		    playSound(state->clips, &state->audioFiles.click, 0.5);//TODO swap param order 
+
                     state->floorStates[i] = !state->floorStates[i];
                 }
             }
