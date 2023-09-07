@@ -198,9 +198,9 @@ void renderAudio(uint8_t* globalAudioBuffer, int numFramesAvailable, AudioClip* 
 		if (clips[i].active){
 			/// audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
     			int samplesAvailable = numFramesAvailable * 2;
-    			uint16_t* currentSample = (uint16_t*)globalAudioBuffer;
+    			int16_t* currentSample = (int16_t*)globalAudioBuffer;
     			uint32_t startingSample = (uint32_t)(clips[i].progress * clips[i].file->sampleCount); 
-    			uint16_t* sourceSample = clips[i].file->samples + startingSample;
+    			int16_t* sourceSample = clips[i].file->samples + startingSample;
 			uint32_t endingSample = min(startingSample + samplesAvailable, clips[i].file->sampleCount);
     			for(uint32_t s=startingSample; s < endingSample; s+=2){
 				/* might work for looping|
