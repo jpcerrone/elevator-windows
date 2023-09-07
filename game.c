@@ -192,7 +192,6 @@ void initGameState(GameState *state) {
 }
 
 void renderAudio(uint8_t* globalAudioBuffer, int numFramesAvailable, AudioClip* clips){
-	// TODO clear to zero tghe numberFramesAvailable first
 	memset(globalAudioBuffer, 0, numFramesAvailable * 2 * 16 / 8);
 	for(int i=0; i < 10; i++){
 		if (clips[i].active){
@@ -208,14 +207,16 @@ void renderAudio(uint8_t* globalAudioBuffer, int numFramesAvailable, AudioClip* 
 		    			sourceSample = clips[i].file->samples + (s -  clips[i].file->sampleCount);
      				}
 				*/
-	    			*currentSample += roundFloat(*(sourceSample)*clips[i].volume); 
+	    			*currentSample = clampRangeInt(*currentSample + roundFloat(*(sourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
+				/* TODO remove
                     char testOut[100];
                     sprintf(testOut, "sourceSample:%d, currentSample:%d\n", *sourceSample, *currentSample);
                     OutputDebugStringA(testOut);
+		    */
                     //*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
 	    			sourceSample++;
 	    			currentSample++;
-                    *currentSample += roundFloat(*(sourceSample) * clips[i].volume);
+                    *currentSample = clampRangeInt(*currentSample + roundFloat(*(sourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
 	    			//*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
 	    			sourceSample++;
 	    			currentSample++;
