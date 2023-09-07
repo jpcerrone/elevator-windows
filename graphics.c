@@ -12,7 +12,7 @@ uint32_t roundUFloat(float value) {
 }
 
 // Using int's since it's pixel art
-void drawRectangle(void* outputStream, int bmWidth, int bmHeight, int minX, int minY, int maxX, int maxY, float r, float g, float b) {
+void drawRectangle(void* outputStream, int bmWidth, int bmHeight, int minX, int minY, int maxX, int maxY, uint32_t color) {
     uint32_t* pixel = (uint32_t*)outputStream;
 
     if (minX < 0)
@@ -28,7 +28,7 @@ void drawRectangle(void* outputStream, int bmWidth, int bmHeight, int minX, int 
     maxY = bmHeight - minY;
     minY = bmHeight - tmp;
 
-    uint32_t color = (0xFF << 24) | (roundUFloat(r * 255.0f) << 16) | (roundUFloat(g * 255.0f) << 8) | (roundUFloat(b * 255.0f) << 0); //0xAA RR GG BB 0b1111
+    //uint32_t color = (0xFF << 24) | (roundUFloat(r * 255.0f) << 16) | (roundUFloat(g * 255.0f) << 8) | (roundUFloat(b * 255.0f) << 0); //0xAA RR GG BB 0b1111
 
     // Go to upper left corner.
     pixel += bmWidth * minY;

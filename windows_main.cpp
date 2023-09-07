@@ -10,6 +10,9 @@ static const int desiredFPS = 60;
 
 static bool gameRunning;
 
+static HCURSOR cursor;
+WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
+
 LARGE_INTEGER getEndPerformanceCount() {
     LARGE_INTEGER endPerformanceCount;
     QueryPerformanceCounter(&endPerformanceCount);
@@ -82,6 +85,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 
 		} break;
+	case WM_SETCURSOR: {
+	    SetCursor(cursor);
+	} break;
         case WM_CLOSE: {
             gameRunning = false;
             DestroyWindow(hwnd);
@@ -105,11 +111,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     MMRESULT canQueryEveryMs = timeBeginPeriod(1);
     Assert(canQueryEveryMs == TIMERR_NOERROR);
 
+    		
     Vector2i nativeRes = { 160, 176 };
     int scalingFactor = 4;
 
+    Vector2i windowsScreenRes = {GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+    // This already considers Window's scaling factor (ie 125%).
+
     Vector2i screenRes = { nativeRes.width * scalingFactor, nativeRes.height * scalingFactor };
-    Vector2i origin = { (1920 - screenRes.width)/2, (1080 - screenRes.height) / 2 }; // TODO: query screen resolution instead of hardcoding 1920x1080.
+    Vector2i origin = { (windowsScreenRes.width - screenRes.width)/2, (windowsScreenRes.height - screenRes.height) / 2 };
     BITMAPINFO bitmapInfo;
     BITMAPINFOHEADER bmInfoHeader = {};
     bmInfoHeader.biSize = sizeof(bmInfoHeader);
@@ -131,7 +141,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
 	wc.lpszClassName = (LPCSTR)CLASS_NAME;
-
+	cursor = LoadCursor(0, IDC_ARROW);
+	wc.hCursor = cursor;// class cursor
+	
 	RegisterClass(&wc);
     RECT desiredClientSize;
     desiredClientSize.left = 0;
