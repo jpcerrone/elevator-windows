@@ -1,12 +1,16 @@
 #pragma once
 
-float clamp(float value) {
+float clampPos(float value) {
     if (value < 0) {
         return 0;
     }
     else {
         return value;
     }
+}
+
+int clampRangeInt(int value, int min, int max){
+	return min(max(value, min), max);
 }
 
 int ceil(float value) { // NOTE wont work for negative numbers

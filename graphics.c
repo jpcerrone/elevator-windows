@@ -84,8 +84,8 @@ void drawDigit(uint32_t* bufferMemory, const Image* image, float x, float y, int
         renderWidth = (int)(screenWidth - x);
     }
     // Go to upper left corner.
-    bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clamp(y)))));
-    bufferMemory += roundFloat(clamp(x));
+    bufferMemory += (int)clampPos((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clampPos(y)))));
+    bufferMemory += roundFloat(clampPos(x));
 
     uint32_t* pixelPointer = image->pixelPointer;
     pixelPointer += (sampleHeight - 1) * image->width; // Go to end row of bmp (it's inverted)
@@ -189,8 +189,8 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
         renderWidth = (int)(screenWidth - (x)); 
     }    
     // Go to upper left corner.
-    bufferMemory += (int)clamp((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clamp(y)))));
-    bufferMemory += roundFloat(clamp(x));
+    bufferMemory += (int)clampPos((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clampPos(y)))));
+    bufferMemory += roundFloat(clampPos(x));
 
     uint32_t* pixelPointer = image->pixelPointer;
     pixelPointer += (sampleHeight - 1) * image->width; // Go to end row of bmp (it's inverted)
