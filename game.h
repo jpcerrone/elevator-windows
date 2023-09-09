@@ -75,6 +75,7 @@ struct GameState {
     float flashTextTimer;
     float circleFocusTimer;
     Vector2i circleSpot;
+    bool failSoundPlaying;
 
     int dropOffFloor;
 
@@ -108,12 +109,18 @@ struct GameState {
     images_t images;
 
     struct audioFiles_t {
+	    AudioFile music;
 	    AudioFile click;
+	    AudioFile arrival;
+	    AudioFile brake;
+	    AudioFile doorClose;
+	    AudioFile doorOpen;
+	    AudioFile fail;
+	    AudioFile passing;
     };
     audioFiles_t audioFiles;
 
-    float sampleOffset; //TODO delete
-    AudioClip clips[10];
+    AudioClip clips[11];
 };
 
 struct GameInput {

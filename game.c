@@ -185,56 +185,83 @@ void initGameState(GameState *state) {
     state->images.titleLabels = loadBMP("../spr/titleLabels.bmp", state->readFileFunction, 2);
 
     state->audioFiles.click = loadWavFile("../sfx/click.wav", state->readFileFunction);
-    // TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
+    state->audioFiles.music = loadWavFile("../sfx/elevator.wav", state->readFileFunction);
+    state->audioFiles.arrival = loadWavFile("../sfx/arrival.wav", state->readFileFunction);
+    state->audioFiles.brake = loadWavFile("../sfx/brake.wav", state->readFileFunction);
+    state->audioFiles.doorClose = loadWavFile("../sfx/door_close.wav", state->readFileFunction);
+    state->audioFiles.doorOpen = loadWavFile("../sfx/door_open.wav", state->readFileFunction);
+    state->audioFiles.fail = loadWavFile("../sfx/fail.wav", state->readFileFunction);
+    state->audioFiles.passing = loadWavFile("../sfx/passing.wav", state->readFileFunction);
+// TODO: I should close these files maybe, load them into my own structures and then close and free the previous memory, also invert rows.
 
-    state->sampleOffset = 0;
     memset(state->clips, 0, sizeof(state->clips)); 
 }
 
 void renderAudio(uint8_t* globalAudioBuffer, int numFramesAvailable, AudioClip* clips){
 	memset(globalAudioBuffer, 0, numFramesAvailable * 2 * 16 / 8);
-	for(int i=0; i < 10; i++){
+	for(int i=0; i < 11; i++){
 		if (clips[i].active){
-			/// audioFramesAvailable | frame = 16bit x 2channels --- (nChannels*wBitsPerSample)/8 --- 4B
-    			int samplesAvailable = numFramesAvailable * 2;
-    			int16_t* currentSample = (int16_t*)globalAudioBuffer;
-    			uint32_t startingSample = (uint32_t)(clips[i].progress * clips[i].file->sampleCount); 
-    			int16_t* sourceSample = clips[i].file->samples + startingSample;
-			uint32_t endingSample = min(startingSample + samplesAvailable, clips[i].file->sampleCount);
-    			for(uint32_t s=startingSample; s < endingSample; s+=2){
-				/* might work for looping|
-	    			if (s >= clips[i].file->sampleCount){
-		    			sourceSample = clips[i].file->samples + (s -  clips[i].file->sampleCount);
-     				}
-				*/
-	    			*currentSample = clampRangeInt(*currentSample + roundFloat(*(sourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
-				/* TODO remove
-                    char testOut[100];
-                    sprintf(testOut, "sourceSample:%d, currentSample:%d\n", *sourceSample, *currentSample);
-                    OutputDebugStringA(testOut);
-		    */
-                    //*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
-	    			sourceSample++;
-	    			currentSample++;
-                    *currentSample = clampRangeInt(*currentSample + roundFloat(*(sourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
-	    			//*currentSample = min(*currentSample + (uint16_t)((*(sourceSample))), UINT16_MAX); 
-	    			sourceSample++;
-	    			currentSample++;
-    			}
-    			clips[i].progress = (endingSample + 1) / (float)clips[i].file->sampleCount; 
-			if(clips[i].progress >= 1.0){
-				clips[i] = {};
+			int16_t* sourceSamples = clips[i].file->samples;
+			uint32_t startingSourceSample = roundFloat(clips[i].progress * clips[i].file->sampleCount);
+			uint32_t endingSourceSample = startingSourceSample + numFramesAvailable * clips[i].file->channels;
+			int16_t* currentSourceSample = sourceSamples + startingSourceSample; 
+            uint16_t samplesRead = 0;
+
+			uint32_t* currentFrame = (uint32_t*)globalAudioBuffer;
+			uint32_t* endingFrame = (uint32_t*)globalAudioBuffer +numFramesAvailable;
+	
+            if (!clips[i].loop && endingSourceSample > clips[i].file->sampleCount) {
+                endingFrame -= (endingSourceSample - clips[i].file->sampleCount)/ clips[i].file->channels;
+                endingSourceSample = clips[i].file->sampleCount;
+            }
+
+	    	while(currentFrame != endingFrame){
+				int16_t* currentDestSample = (int16_t*) currentFrame;	
+				if (clips[i].file->channels == 2){
+					*currentDestSample = (int16_t)clampRangeInt(*currentDestSample + roundFloat(*(currentSourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
+
+					currentSourceSample++;
+					currentDestSample++;
+                    *currentDestSample = (int16_t)clampRangeInt(*currentDestSample + roundFloat(*(currentSourceSample)*clips[i].volume), INT16_MIN, INT16_MAX); 
+					currentSourceSample++;
+                    samplesRead += 2;
+                    if (startingSourceSample + samplesRead == clips[i].file->sampleCount)
+                    {
+                        currentSourceSample = clips[i].file->samples;
+                        samplesRead = 0;
+                    }
+                }
+                else { // 1 channel
+                    *currentDestSample += *currentSourceSample;
+					currentDestSample++;
+                    *currentDestSample += *currentSourceSample;
+					currentSourceSample++;
+                    samplesRead++;
+                    if (startingSourceSample + samplesRead == clips[i].file->sampleCount)
+                    {
+                        currentSourceSample = clips[i].file->samples;
+                        samplesRead = 0;
+                    }
+                }
+				currentFrame++;
 			}
-            /*
-        char offOut[100];
-    sprintf(offOut, "off:%f - strtSam:%d - samAva:%d - samCount:%d\n", clips[i].progress, startingSample, samplesAvailable, clips[i].file->sampleCount);
-    OutputDebugStringA(offOut);
-   		*/
-        }
+			clips[i].progress = (endingSourceSample) / (float)clips[i].file->sampleCount; 
+			if(clips[i].progress >= 1.0){
+				    if(clips[i].loop){
+					clips[i].progress -= 1.0;
+				    } else{
+			    		clips[i] = {};
+				    }
+		    	}
+             }
 	}
-    	return;
 }
 
+void stopAllAudio(AudioClip* clips){
+	for(int i=0; i < 11; i++){
+		clips[i] = {};
+	}
+}
 void resetGame(GameState *state) {
     state->score = 0;
     memset(state->floorStates, 0, sizeof(state->floorStates));
@@ -252,6 +279,7 @@ void resetGame(GameState *state) {
     state->dropOffTimer = 0;
     state->flashTextTimer = 0;
     state->circleFocusTimer = 0.0;
+    state->failSoundPlaying = false;
 
     memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
     memset(state->fullFloors, 0, sizeof(bool) * 10);
@@ -261,17 +289,30 @@ void resetGame(GameState *state) {
 }
 
 void playSound(AudioClip *clips, AudioFile *file, float volume = 1.0f){
-	for(int i=0; i < 10; i++){
+	Assert(volume >= 0 && volume <= 1.0);
+	for(int i=1; i < 11; i++){ // Index 0 reserved for BG music.
 		if (!clips[i].active){
 			clips[i].active = true;
 			clips[i].file = file;
 			clips[i].progress = 0;
 			clips[i].volume = volume;
+			clips[i].loop = false;
 			break;
 
 		}
 	}
 }
+
+// Same as playSound but always starts the bg music, regardless of how many audio clips are playing.
+void playMusic(AudioClip *clips, AudioFile *file, float volume = 1.0f){
+	Assert(volume >= 0 && volume <= 1.0);
+	clips[0].active = true;
+	clips[0].file = file;
+	clips[0].progress = 0;
+	clips[0].volume = volume;
+	clips[0].loop = true;
+}
+
 void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, float delta) {
     if (!state->isInitialized) {
         initGameState(state);
@@ -296,7 +337,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                 if (input.buttons[i]) {
                     resetGame(state);
                     state->currentScreen = GAME;
-                    state->transitionOutTimer = TRANSITION_TIME;
+		    playMusic(state->clips, &state->audioFiles.music, 0.5);
+		    state->transitionOutTimer = TRANSITION_TIME;
                     break;
                 }
             }
@@ -319,6 +361,10 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		}
 	    	else if (state->circleFocusTimer > 1.4) {
 		    	state->circleFocusTimer -= delta;
+			if (state->circleFocusTimer < 1.8 && !state->failSoundPlaying){
+				playSound(state->clips, &state->audioFiles.fail, 0.5);
+				state->failSoundPlaying = true;
+			}
 			return;
 	    	}
 		else if (state->circleFocusTimer > 1.0) {
@@ -346,6 +392,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             else if (state->doorTimer < 0) {
                 pickAndPlaceGuys(state);
                 state->doorTimer = 0;
+		playSound(state->clips, &state->audioFiles.doorClose, 0.5);
             }
             // Mood
             if (!(state->doorTimer > 0)) { // Don't update patience when opening doors
@@ -353,6 +400,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     if (state->guys[i].active) {
                         state->guys[i].mood -= delta;
                         if (state->guys[i].mood <= 0.0) {
+				stopAllAudio(state->clips);
+				playSound(state->clips, &state->audioFiles.brake, 0.5);
 				state->circleFocusTimer = CIRCLE_TIME;
 				if (state->guys[i].onElevator){
 					state->circleSpot = sum(sum(Vector2i{screenWidth/2, screenHeight/2}, elevatorSpotsPos[state->guys[i].elevatorSpot]), Vector2i{11,32});
@@ -386,7 +435,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     if (!state->moving && i == state->currentFloor) { // TODO: Play animation here? Check OG game
                         continue;
                     }
-		    playSound(state->clips, &state->audioFiles.click, 0.5);//TODO swap param order 
+		    playSound(state->clips, &state->audioFiles.click, 0.5);
 
                     state->floorStates[i] = !state->floorStates[i];
                 }
@@ -412,6 +461,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                                 state->direction = 0; // Not strictly needed I think
                                 state->floorStates[state->currentDestination] = false;
                                 state->doorTimer = DOOR_TIME;
+				playSound(state->clips, &state->audioFiles.arrival, 0.5);
+				playSound(state->clips, &state->audioFiles.doorOpen, 0.5);
                             }
                         }
                     }
@@ -425,7 +476,9 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                                 state->direction = 0; // Not strictly needed I think
                                 state->floorStates[state->currentDestination] = false;
                                 state->doorTimer = DOOR_TIME;
-                            }
+                            	playSound(state->clips, &state->audioFiles.arrival, 0.5);
+				playSound(state->clips, &state->audioFiles.doorOpen, 0.5);
+				}
                         }
                     }
                 }
