@@ -11,6 +11,8 @@
 #include "bmp.c"
 #include "audio.c"
 
+#define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
+
 void setNextDirection(GameState *state) {
     // Get next destination
     int currentNext = state->currentFloor;
@@ -40,7 +42,7 @@ void setNextDirection(GameState *state) {
     }
 }
 
-void addScoreToTotal(float mood, GameState *state, bool pickingUp) {
+int getScore(float mood, bool pickingUp) {
     int score = 0;
     switch (ceil(mood / MOOD_TIME)) {
     case 3: {
@@ -53,22 +55,42 @@ void addScoreToTotal(float mood, GameState *state, bool pickingUp) {
         score = pickingUp ? 200: 50;
     }break;
     }
-    state->score += score;
+    return score;
+}
+
+void spawnFloatingNumber(floatingNumber* floatingNumbers, int floatingNumbersSize, int value, int floor){
+	for(int i=0; i < floatingNumbersSize; i++){
+		if(!floatingNumbers[i].active){
+			floatingNumbers[i].active = true;
+			floatingNumbers[i].value = value;
+			floatingNumbers[i].floor = floor;
+			floatingNumbers[i].offsetY = 0;
+			floatingNumbers[i].startingPosOffset = {rand()%15, rand()%20}; 
+			break;
+		}
+	}
 }
 
 void pickAndPlaceGuys(GameState* state) {
     for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
         if (state->guys[i].active) {
             if (state->guys[i].onElevator && (state->guys[i].desiredFloor == state->currentFloor)) {
-                addScoreToTotal(state->guys[i].mood, state, false);
-                state->guys[i] = {};
+
+		int score = getScore(state->guys[i].mood, false);
+                state->score += score;
+	    spawnFloatingNumber(state->floatingNumbers, ARRAY_SIZE(state->floatingNumbers), score, state->currentFloor);
+ 
+		state->guys[i] = {};
                 state->elevatorSpots[state->guys[i].elevatorSpot] = false;
                 state->dropOffFloor = state->currentFloor;
                 state->dropOffTimer = DROP_OFF_TIME;
             }
             else {
                 if (state->guys[i].currentFloor == state->currentFloor) {
-                    addScoreToTotal(state->guys[i].mood, state, true);
+			int score = getScore(state->guys[i].mood, true);
+
+                    state->score += score;
+		    spawnFloatingNumber(state->floatingNumbers, ARRAY_SIZE(state->floatingNumbers), score, state->currentFloor);
                     state->guys[i].onElevator = true;
                     state->guys[i].mood = MOOD_TIME * 3; // 3 to get all 4 possible mood state's ranges [0..3]
                     state->fullFloors[state->currentFloor] = false;
@@ -165,6 +187,8 @@ void initGameState(GameState *state) {
         state->maxScore = 0;
     }
     state->flashTextTimer = FLASH_TIME;
+
+    memset(state->floatingNumbers, 0, sizeof(state->floatingNumbers));
 
     state->images.ui = loadBMP("../spr/ui.bmp", state->readFileFunction);
     state->images.button = loadBMP("../spr/button.bmp", state->readFileFunction, 2);
@@ -282,10 +306,10 @@ void resetGame(GameState *state) {
     state->failSoundPlaying = false;
 
     memset(state->elevatorSpots, 0, sizeof(state->elevatorSpots));
-    memset(state->fullFloors, 0, sizeof(bool) * 10);
-    for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) {
-        state->guys[i] = {};
-    }
+    memset(state->fullFloors, 0, sizeof(state->fullFloors));
+    memset(state->guys, 0 , sizeof(state->guys));
+    
+    memset(state->floatingNumbers, 0, sizeof(state->floatingNumbers));
 }
 
 void playSound(AudioClip *clips, AudioFile *file, float volume = 1.0f){
@@ -542,7 +566,22 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     }
                 }
             }
-
+	    // Draw flaoting numbers
+	float yLimit = screenHeight/2.0f;
+	int floatingSpeed = 40;
+	   for(int i=0; i < ARRAY_SIZE(state->floatingNumbers); i++){
+		   if(state->floatingNumbers[i].active){
+			if ((state->floatingNumbers[i].floor * FLOOR_SEPARATION + yLimit + state->floatingNumbers[i].offsetY>= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
+                        (state->floatingNumbers[i].floor * FLOOR_SEPARATION + yLimit + state->floatingNumbers[i].offsetY<= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
+				Vector2i startingPos = sum(Vector2i{screenWidth/16, screenHeight/2}, state->floatingNumbers[i].startingPosOffset);
+			   drawNumber(state->floatingNumbers[i].value, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)startingPos.x, (float)startingPos.y + state->floatingNumbers[i].offsetY - floorYOffset, screenWidth, screenHeight, BLACK);
+			}
+			   state->floatingNumbers[i].offsetY += delta*floatingSpeed;
+			   if(state->floatingNumbers[i].offsetY > yLimit){
+				   state->floatingNumbers[i] = {};
+			   }
+		   }
+	   }
             // Draw rest of scene
             drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
                 (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);

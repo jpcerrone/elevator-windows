@@ -52,6 +52,14 @@ enum Screen {
     SCORE,
 };
 
+struct floatingNumber{
+	    bool active;
+	    int value;
+	    int floor;
+	    float offsetY;
+	    Vector2i startingPosOffset;
+};
+
 struct GameState {
     bool isInitialized;
     Screen currentScreen;
@@ -83,6 +91,8 @@ struct GameState {
     bool elevatorSpots[ELEVATOR_SPOTS];
     bool fullFloors[10];
 
+    floatingNumber floatingNumbers[5];
+    
     readFile_t* readFileFunction;
     writeScoreToFile_t* writeScoreFunction;
     //freeFileMemory_t* freeFileMemory;
