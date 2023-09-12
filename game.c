@@ -140,6 +140,12 @@ bool areMaxGuysOnScreen(Guy *guys) {
     return true;
 }
 
+#ifdef DEBUG
+void addRandomGuyToElevator(Guy *guys){
+
+
+}
+#endif
 void spawnNewGuy(Guy *guys, bool *fullFloors, int currentFloor) {
     if (areAllFloorsSave1Full(fullFloors) || areMaxGuysOnScreen(guys)) {
         return;
@@ -337,16 +343,20 @@ void playMusic(AudioClip *clips, AudioFile *file, float volume = 1.0f){
 	clips[0].loop = true;
 }
 
-void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, float delta) {
-    if (!state->isInitialized) {
+
+
+void updateAndRender(uint32_t* bitMapMemory, int screenWidth, int screenHeight, GameInput input, GameState* state, int audioFramesAvailable, uint8_t* audioBuffer, float delta) {
+   Render renders[50] = {};
+
+	if (!state->isInitialized) {
         initGameState(state);
             }
-    renderAudio(audioBuffer, audioFramesAvailable, state->clips);
+    //renderAudio(audioBuffer, audioFramesAvailable, state->clips);
         switch (state->currentScreen) {
         case MENU:{
 
 	    fillBGWithColor(bitMapMemory, screenWidth, screenHeight, BLACK);
-            drawImage((uint32_t*)bitMapMemory, &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, screenWidth, screenHeight, 0, false ,3, true);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.titleLabels, screenWidth/2.0f, screenHeight/2.0f, 0, false ,3, true);
 	    int flashPerSecond = 2; //TODO FIX this doesnt really work
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= flashPerSecond*delta;
@@ -355,7 +365,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 	    }
 	    bool drawFlash = roundFloat(state->flashTextTimer*flashPerSecond) % 2;
 	    if (drawFlash){
-			drawImage((uint32_t*)bitMapMemory,&state->images.titleLabels, screenWidth/2.0f,screenHeight/2.0f - 40, screenWidth, screenHeight, 1, false, 1, true);
+			drawImage(renders, ARRAY_SIZE(renders), &state->images.titleLabels, screenWidth/2.0f,screenHeight/2.0f - 40, 1, false, 1, true);
 	    }
             for (int i = 0; i < 10; i++) {
                 if (input.buttons[i]) {
@@ -379,7 +389,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 	    } else if (state->circleFocusTimer > 2.2) {
 	    	state->circleFocusTimer -= delta;
 	    	float focusPercentage = (state->circleFocusTimer- 2.2f)*1.0f/0.3f; 
-	    	drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*screenHeight/2 + (1 - focusPercentage) * radius), screenWidth, screenHeight);
+	    	drawFocusCircle(bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*screenHeight/2 + (1 - focusPercentage) * radius), screenWidth, screenHeight);
 	    	return;
 
 		}
@@ -394,7 +404,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		else if (state->circleFocusTimer > 1.0) {
 			state->circleFocusTimer -= delta;
 			float focusPercentage = (state->circleFocusTimer-1.0f)/0.4f; 
-			drawFocusCircle((uint32_t*)bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*radius), screenWidth, screenHeight);
+			drawFocusCircle(bitMapMemory, state->circleSpot.x, state->circleSpot.y, (int)(focusPercentage*radius), screenWidth, screenHeight);
 			return;
 		}
 		else if (state->circleFocusTimer > 0){
@@ -518,41 +528,41 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             if (floorYOffset > 160) {
                 floorYOffset = (FLOOR_SEPARATION - floorYOffset) * -1; // Hack to handle negative mod operation.
             }
-            drawImage((uint32_t*)bitMapMemory, &state->images.floorB, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
-            drawImage((uint32_t*)bitMapMemory, &state->images.vigasB, 0, 16, screenWidth, screenHeight);
-            drawImage((uint32_t*)bitMapMemory, &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
-                (float)(screenHeight - 16 - state->images.elevator.height) / 2 + 16, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.floorB, 0, (float)16 - floorYOffset);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.vigasB, 0, 16);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.elevator, (float)(screenWidth - state->images.elevator.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevator.height) / 2 + 16);
 
             // Display buttons
             for (int j = 0; j < 10; j++) {
 		float buttonsPosX = state->images.button.width/(float)state->images.button.hframes * 9.0f;
-                drawImage((uint32_t*)bitMapMemory, &state->images.button, buttonsPosX, 
-                    (float)state->images.button.height + state->images.button.height * j, screenWidth, screenHeight, state->floorStates[j]);
-		drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont4px, buttonsPosX + 6,
+                drawImage(renders, ARRAY_SIZE(renders), &state->images.button, buttonsPosX, 
+                    (float)state->images.button.height + state->images.button.height * j, state->floorStates[j]);
+		drawDigit(bitMapMemory, &state->images.numbersFont4px, buttonsPosX + 6,
 				(float)state->images.button.height + state->images.button.height * j + 5, screenWidth, screenHeight, j, 1, state->floorStates[j] ? BLACK : GREY);
             }
             Vector2i screenCenter = { screenWidth / 2, screenHeight / 2 };
             Vector2i floorIndicatorOffset = { 15, 40 }; // TODO: find proper offset from og game
 
             // Display guys, TODO: could be done only on updates
-            drawImage((uint32_t*)bitMapMemory, &state->images.ui, 0, 16, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.ui, 0, 16);
             for (int j = 0; j < MAX_GUYS_ON_SCREEN; j++) {
                 if (state->guys[j].active) {
                     int mood = 3 - ceil(state->guys[j].mood / MOOD_TIME);
                     if (state->guys[j].onElevator) {
                         Vector2i posInElevator = elevatorSpotsPos[state->guys[j].elevatorSpot];
-                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)screenCenter.x + posInElevator.x,
-                            (float)screenCenter.y + posInElevator.y, screenWidth, screenHeight, mood);
+                        drawImage(renders, ARRAY_SIZE(renders), &state->images.guy, (float)screenCenter.x + posInElevator.x,
+                            (float)screenCenter.y + posInElevator.y, mood);
 			Vector2i digitMinPos = sum(sum(screenCenter, posInElevator), floorIndicatorOffset); 
 			Vector2i digitMaxPos = sum(digitMinPos, Vector2i{6, 12} ); 
-			drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, digitMinPos.x - 1, digitMinPos.y -1, digitMaxPos.x +1, digitMaxPos.y +1, GREY); 
-                        drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)digitMinPos.x, (float)digitMinPos.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 2);
+			drawRectangle(bitMapMemory, screenWidth, screenHeight, digitMinPos.x - 1, digitMinPos.y -1, digitMaxPos.x +1, digitMaxPos.y +1, GREY); 
+                        drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)digitMinPos.x, (float)digitMinPos.y, screenWidth, screenHeight, state->guys[j].desiredFloor, 2);
                     }
                     else {
                         Vector2i offsetInBox = { -2, -1 };
-                        drawImage((uint32_t*)bitMapMemory, &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
+                        drawImage(renders, ARRAY_SIZE(renders), &state->images.uiGuy, state->images.uiGuy.height * 8.0f + offsetInBox.x,
                             (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor + offsetInBox.y,
-                            screenWidth, screenHeight, mood);
+                            mood);
                         Vector2i arrowOffsetInBox = { 11, 0 };
                         int arrowFrame;
                         if (state->guys[j].currentFloor < state->guys[j].desiredFloor) {
@@ -561,8 +571,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                         else {
                             arrowFrame = 1;
                         }
-                        drawImage((uint32_t*)bitMapMemory, &state->images.arrows, state->images.uiGuy.height * 8.0f + arrowOffsetInBox.x,
-                            (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, screenWidth, screenHeight, arrowFrame);
+                        drawImage(renders, ARRAY_SIZE(renders), &state->images.arrows, state->images.uiGuy.height * 8.0f + arrowOffsetInBox.x,
+                            (float)state->images.uiGuy.height + state->images.uiGuy.height * state->guys[j].currentFloor, arrowFrame);
                     }
                 }
             }
@@ -574,7 +584,7 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 			if ((state->floatingNumbers[i].floor * FLOOR_SEPARATION + yLimit + state->floatingNumbers[i].offsetY>= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
                         (state->floatingNumbers[i].floor * FLOOR_SEPARATION + yLimit + state->floatingNumbers[i].offsetY<= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
 				Vector2i startingPos = sum(Vector2i{screenWidth/16, screenHeight/2}, state->floatingNumbers[i].startingPosOffset);
-			   drawNumber(state->floatingNumbers[i].value, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)startingPos.x, (float)startingPos.y + state->floatingNumbers[i].offsetY - floorYOffset, screenWidth, screenHeight, BLACK);
+			   drawNumber(state->floatingNumbers[i].value,bitMapMemory,  &state->images.numbersFont3px, (float)startingPos.x, (float)startingPos.y + state->floatingNumbers[i].offsetY - floorYOffset, screenWidth, screenHeight, BLACK);
 			}
 			   state->floatingNumbers[i].offsetY += delta*floatingSpeed;
 			   if(state->floatingNumbers[i].offsetY > yLimit){
@@ -583,12 +593,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		   }
 	   }
             // Draw rest of scene
-            drawImage((uint32_t*)bitMapMemory, &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
-                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.elevatorF, (float)(screenWidth - state->images.elevatorF.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16);
             int doorFrame = (state->doorTimer > 0) ? 0 : 1;
-            drawImage((uint32_t*)bitMapMemory, &state->images.door, (float)(screenWidth - state->images.elevatorF.width) / 2,
-                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, screenWidth, screenHeight, doorFrame);
-            drawImage((uint32_t*)bitMapMemory, &state->images.floor, 0, (float)16 - floorYOffset, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.door, (float)(screenWidth - state->images.elevatorF.width) / 2,
+                (float)(screenHeight - 16 - state->images.elevatorF.height) / 2 + 16, doorFrame);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.floor, 0, (float)16 - floorYOffset);
 
             for (int i = 0; i < MAX_GUYS_ON_SCREEN; i++) { // TODO see if we can add this in to the other loop, once we have Z layering
                 if (state->guys[i].active) {
@@ -596,8 +606,8 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
                     if ((state->guys[i].currentFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
                         (state->guys[i].currentFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
                         Vector2i waitingGuyPos = { 10, 16 - floorYOffset + 40 };
-                        drawImage((uint32_t*)bitMapMemory, &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, screenWidth, screenHeight, mood);
-                        drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
+                        drawImage(renders, ARRAY_SIZE(renders), &state->images.guy, (float)waitingGuyPos.x, (float)waitingGuyPos.y, mood);
+                        drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)waitingGuyPos.x + floorIndicatorOffset.x,
                             (float)waitingGuyPos.y + floorIndicatorOffset.y, screenWidth, screenHeight, state->guys[i].desiredFloor, 2);
                     }
                 }
@@ -606,18 +616,18 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             if (state->dropOffTimer > 0) {
                 if ((state->dropOffFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) &&
                     (state->dropOffFloor * FLOOR_SEPARATION <= state->elevatorPosY + FLOOR_SEPARATION / 2)) {
-                    drawImage((uint32_t*)bitMapMemory, &state->images.guy, 10, (float)16 - floorYOffset + 40, screenWidth, screenHeight, 0, 1);
+                    drawImage(renders, ARRAY_SIZE(renders), &state->images.guy, 10, (float)16 - floorYOffset + 40, 0, 1);
                 }
             }
 
-            drawImage((uint32_t*)bitMapMemory, &state->images.vigasF, 0, 16, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.vigasF, 0, 16);
 
             // Bottom UI
-            drawImage((uint32_t*)bitMapMemory, &state->images.uiBottom, 0, 0, screenWidth, screenHeight);
+            drawImage(renders, ARRAY_SIZE(renders), &state->images.uiBottom, 0, 0);
 
             // -- Score
-	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 4, 5, screenWidth, screenHeight);
-            drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, 29, 5, screenWidth, screenHeight, GREY);
+	    drawImage(renders, ARRAY_SIZE(renders), &state->images.uiLabels, 4, 5);
+            drawNumber(state->score,bitMapMemory,  &state->images.numbersFont3px, 29, 5, screenWidth, screenHeight, GREY);
     
 	    // -- Current Floor
 	    int xOffset = 0;
@@ -625,20 +635,20 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		    xOffset = -2;
 	    }
 
-	    drawNumber(state->currentFloor, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth/2.0f + 1, 5.0f, screenWidth, screenHeight, BLACK, true);
+	    drawNumber(state->currentFloor,bitMapMemory,  &state->images.numbersFont3px, screenWidth/2.0f + 1, 5.0f, screenWidth, screenHeight, BLACK, true);
             // -- Elevator numbers
             if (state->currentFloor == 10) {
-                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
+                drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 37, (float)screenCenter.y + 38,
                     screenWidth, screenHeight, 1);
-                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
+                drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 34, (float)screenCenter.y + 35,
                     screenWidth, screenHeight, 0);
             }
             else {
-                drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
+                drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x - 36, (float)screenCenter.y + 37,
                     screenWidth, screenHeight, state->currentFloor);
             }
             // --Level
-	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, 128, 5, screenWidth, screenHeight, 1);
+	    drawImage(renders, ARRAY_SIZE(renders), &state->images.uiLabels, 128, 5, 1);
 	    int flashesPerSec = 2; 
 	    if (state->flashTextTimer > 0){
 		state->flashTextTimer -= delta;
@@ -646,12 +656,12 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
 		state->flashTextTimer = 0;
 	    }
 	    if (int(state->flashTextTimer * flashesPerSec) % 2 || state->flashTextTimer == 0){
-            	drawDigit((uint32_t*)bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 73, 5,
+            	drawDigit(bitMapMemory, &state->images.numbersFont3px, (float)screenCenter.x + 73, 5,
                 screenWidth, screenHeight, state->currentLevel, 1, GREY);
 	    }
             // Transition In         
             if (state->transitionOutTimer > 0) {
-                drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight * state->transitionOutTimer), BLACK);
+                drawRectangle(bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight * state->transitionOutTimer), BLACK);
                 state->transitionOutTimer -= delta;
             }
 
@@ -701,19 +711,19 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             }
             if (state->transitionInTimer > 0) {
                 state->transitionInTimer -= delta;
-                drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, (int)(screenHeight* state->transitionInTimer), screenWidth, screenHeight, BLACK);
+                drawRectangle(bitMapMemory, screenWidth, screenHeight, 0, (int)(screenHeight* state->transitionInTimer), screenWidth, screenHeight, BLACK);
             }
             else {
                 if (state->scoreTimer > 0) {
                     state->scoreTimer -= delta;
-	    	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, screenWidth/2.0f, screenHeight/2.0f + 20, screenWidth, screenHeight, 2, 0, 1, true);
-	    drawImage((uint32_t*)bitMapMemory, &state->images.uiLabels, screenWidth/2.0f, screenHeight/2.0f - 20, screenWidth, screenHeight, 3, 0, 1 , true);
-                    drawNumber(state->score, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f + 10, screenWidth, screenHeight, GREY, true);
-                    drawNumber(state->maxScore, (uint32_t*)bitMapMemory, &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 30, screenWidth, screenHeight, GREY, true);
+	    	    drawImage(renders, ARRAY_SIZE(renders), &state->images.uiLabels, screenWidth/2.0f, screenHeight/2.0f + 20, 2, 0, 1, true);
+	    drawImage(renders, ARRAY_SIZE(renders), &state->images.uiLabels, screenWidth/2.0f, screenHeight/2.0f - 20, 3, 0, 1 , true);
+                    drawNumber(state->score,bitMapMemory,  &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f + 10, screenWidth, screenHeight, GREY, true);
+                    drawNumber(state->maxScore,bitMapMemory,  &state->images.numbersFont3px, screenWidth / 2.0f, screenHeight / 2.0f - 30, screenWidth, screenHeight, GREY, true);
                     state->writeScoreFunction((char *)& SCORE_PATH, state->maxScore);
                 }
                 else if (state->transitionOutTimer > 0) {
-                    drawRectangle((uint32_t*)bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight* (1-state->transitionOutTimer)), BLACK);
+                    drawRectangle(bitMapMemory, screenWidth, screenHeight, 0, 0, screenWidth, (int)(screenHeight* (1-state->transitionOutTimer)), BLACK);
                     state->transitionOutTimer -= delta;
                 }
                 else {
@@ -722,6 +732,6 @@ void updateAndRender(void* bitMapMemory, int screenWidth, int screenHeight, Game
             }
         }break;
     }
-
+	renderImages(renders, ARRAY_SIZE(renders), bitMapMemory, screenWidth, screenHeight);
 }
 

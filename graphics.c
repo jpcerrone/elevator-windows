@@ -155,53 +155,50 @@ void drawDigit(uint32_t* bufferMemory, const Image* image, float x, float y, int
         bufferMemory += strideToNextRow;
     }
 }
-void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int screenWidth, int screenHeight, int frame = 0, bool flip = 0, int scale = 1, bool centered = false) {
-    // TODO: should x and y be ints?
-    // TODO: it may make sense to merge with drawNumber
-    Assert(frame >= 0);
-    Assert(scale >= 1);
-    Assert(frame <= image->hframes);
-    // NOTE: offset could be implemented here.
-    //y += image->offset.y;
-    //x += image->offset.x;
+struct Render{
+	Image* image;
+	float x;
+	float y;
+	int frame;
+	bool flip;
+	int scale;
+	bool centered;
+	int zLayer;
+};
 
-    if (!image->pixelPointer) {
-        OutputDebugString("Can not display null image\n");
-        return;
+void renderImage(Render* render, uint32_t* bufferMemory, int screenWidth, int screenHeight){
+    int frameWidth = (render->image->width / render->image->hframes); // TODO: check handling image widths that are odd. (ie 23)  
+    if (render->centered) {
+        render->x = render->x - (frameWidth*render->scale / 2.0f);
     }
-
-    int frameWidth = (image->width / image->hframes); // TODO: check handling image widths that are odd. (ie 23)  
-    if (centered) {
-        x = x - (frameWidth*scale / 2.0f);
-    }
-    int sampleHeight = image->height;
+    int sampleHeight = render->image->height;
     int sampleWidth = frameWidth ;
 
-    int renderHeight = sampleHeight * scale;
-    int renderWidth = sampleWidth * scale;
+    int renderHeight = sampleHeight * render->scale;
+    int renderWidth = sampleWidth * render->scale;
 
-    if (renderHeight + y > screenHeight) {
-        int diff = (int)(renderHeight + y - screenHeight);
-        sampleHeight -= diff / scale; // TODO (float) diff
-        renderHeight = (int)(screenHeight - (y));
+    if (renderHeight + render->y > screenHeight) {
+        int diff = (int)(renderHeight + render->y - screenHeight);
+        sampleHeight -= diff / render->scale; // TODO (float) diff
+        renderHeight = (int)(screenHeight - (render->y));
     }
-    if (renderWidth + x > screenWidth) {
-        renderWidth = (int)(screenWidth - (x)); 
+    if (renderWidth + render->x > screenWidth) {
+        renderWidth = (int)(screenWidth - (render->x)); 
     }    
     // Go to upper left corner.
-    bufferMemory += (int)clampPos((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clampPos(y)))));
-    bufferMemory += roundFloat(clampPos(x));
+    bufferMemory += (int)clampPos((float)screenWidth * (screenHeight - (renderHeight + roundFloat(clampPos(render->y)))));
+    bufferMemory += roundFloat(clampPos(render->x));
 
-    uint32_t* pixelPointer = image->pixelPointer;
-    pixelPointer += (sampleHeight - 1) * image->width; // Go to end row of bmp (it's inverted)
+    uint32_t* pixelPointer = render->image->pixelPointer;
+    pixelPointer += (sampleHeight - 1) * render->image->width; // Go to end row of bmp (it's inverted)
     
-    if (x < 0) {
-        renderWidth += roundFloat(x); // Reducing width
+    if (render->x < 0) {
+        renderWidth += roundFloat(render->x); // Reducing width
     }
-    if (y < 0) {
-        renderHeight += roundFloat(y); // Reducing height
+    if (render->y < 0) {
+        renderHeight += roundFloat(render->y); // Reducing height
         // No need to advance from where to sample here
-        bufferMemory -= screenWidth * (roundFloat(y));
+        bufferMemory -= screenWidth * (roundFloat(render->y));
     }
 
     int strideToNextRow = screenWidth - renderWidth;
@@ -210,18 +207,18 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
     }
     for (int j = 0; j < renderHeight; j++) {
         int p = 0;
-        pixelPointer += frameWidth * frame; // Advance to proper frame
-        if (flip) {
+        pixelPointer += frameWidth * render->frame; // Advance to proper frame
+        if (render->flip) {
             pixelPointer += frameWidth -1;
             p += frameWidth - 1;
         }
-        if (x < 0) {
-	    if (flip){
-		pixelPointer += roundFloat(x/scale);
-		p += roundFloat(x/scale);
+        if (render->x < 0) {
+	    if (render->flip){
+		pixelPointer += roundFloat(render->x/render->scale);
+		p += roundFloat(render->x/render->scale);
 	    } else{
-            pixelPointer -= roundFloat(x/scale);
-            p -= roundFloat(x/scale);
+            pixelPointer -= roundFloat(render->x/render->scale);
+            p -= roundFloat(render->x/render->scale);
 	    }
         }
         for (int i = 0; i < renderWidth; i++) {
@@ -240,8 +237,8 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
 
             *bufferMemory = interpolatedPixel;
             bufferMemory++;
-            if (scale == 1) {
-                if (flip) {
+            if (render->scale == 1) {
+                if (render->flip) {
                     pixelPointer--; // right to left
                     p--;
                 }
@@ -251,8 +248,8 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
                 }
             }
             else {
-                if ((i % scale) == scale - 1) { // Advance pointer every "scale" steps
-                    if (flip) {
+                if ((i % render->scale) == render->scale - 1) { // Advance pointer every "scale" steps
+                    if (render->flip) {
                         pixelPointer--; 
                         p--;// right to left
                     }
@@ -263,27 +260,71 @@ void drawImage(uint32_t* bufferMemory, const Image* image, float x, float y, int
                 }
             }
         }
-        if (flip) {
+        if (render->flip) {
             pixelPointer += frameWidth;
             p += frameWidth;
         }
 		pixelPointer += (int)(frameWidth - p); // Advance till end of frame
-        pixelPointer += +image->width - frameWidth * (frame + 1); // Advance till end of current row in the image
+        pixelPointer += render->image->width - frameWidth * (render->frame + 1); // Advance till end of current row in the image
 
-        if (scale == 1) {
-            pixelPointer -= 2 * image->width;
+        if (render->scale == 1) {
+            pixelPointer -= 2 * render->image->width;
         }
         else {
-            if ((j % scale) == scale-1) {
-                pixelPointer -= 2 * image->width; // start at the top, go down (Since BMPs are inverted) TODO: just load them in the right order
+            if ((j % render->scale) == render->scale-1) {
+                pixelPointer -= 2 * render->image->width; // start at the top, go down (Since BMPs are inverted) TODO: just load them in the right order
             }
             else {
-                pixelPointer -= image->width;
+                pixelPointer -= render->image->width;
             }
 
         }
         bufferMemory += strideToNextRow;
     }
+
+
+}
+void renderImages(Render* renders, int arraySize, uint32_t* buffer, int screenWidth, int screenHeight){
+	// sort
+	// render
+	for(int i=0; i < arraySize; i++){
+        if (renders[i].image) {
+		    renderImage(&renders[i], buffer, screenWidth, screenHeight);
+        }
+	}
+}
+void drawImage(Render* renders, int rendersSize, Image* image, float x, float y, int frame = 0, bool flip = 0, int scale = 1, bool centered = false, int zLayer = 0) {
+    // TODO: should x and y be ints?
+    // TODO: it may make sense to merge with drawNumber
+    Assert(frame >= 0);
+    Assert(scale >= 1);
+    Assert(frame <= image->hframes);
+    // NOTE: offset could be implemented here.
+    //y += image->offset.y;
+    //x += image->offset.x;
+
+    if (!image->pixelPointer) {
+        OutputDebugString("Can not display null image\n");
+        return;
+    }
+
+    Render render;
+    render.image = image;
+    render.x = x;
+    render.y = y;
+    render.frame = frame;
+    render.flip = flip;
+    render.scale = scale;
+    render.centered = centered;
+    render.zLayer = zLayer;
+
+	for(int i=0; i < rendersSize; i++){
+		if(!renders[i].image){
+			renders[i] = render;
+			break;
+		}
+	}
+
 }
 
 void drawFocusCircle(void* bufferMemory, int x, int y, int radius, int screenWidth, int screenHeight){
