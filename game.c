@@ -213,6 +213,7 @@ void initGameState(GameState *state) {
     state->images.numbersFont4px = loadBMP("../spr/4x6Numbers.bmp", state->readFileFunction, 10);
     state->images.uiLabels = loadBMP("../spr/uiLabels.bmp", state->readFileFunction, 4);
     state->images.titleLabels = loadBMP("../spr/titleLabels.bmp", state->readFileFunction, 2);
+    state->images.rectangle = loadBMP("../spr/rectangle.bmp", state->readFileFunction);
 
     state->audioFiles.click = loadWavFile("../sfx/click.wav", state->readFileFunction);
     state->audioFiles.music = loadWavFile("../sfx/elevator.wav", state->readFileFunction);
@@ -350,8 +351,8 @@ void updateAndRender(uint32_t* bitMapMemory, int screenWidth, int screenHeight, 
    Render renders[100] = {};
 
 	if (!state->isInitialized) {
-        initGameState(state);
-            }
+		initGameState(state);
+        }
     	renderAudio(audioBuffer, audioFramesAvailable, state->clips);
         switch (state->currentScreen) {
         case MENU:{
@@ -397,6 +398,7 @@ void updateAndRender(uint32_t* bitMapMemory, int screenWidth, int screenHeight, 
 			}
 		}
 		
+	
             // Timers
 	    // Circle Focus
 	    	int radius = 13;
@@ -602,8 +604,8 @@ void updateAndRender(uint32_t* bitMapMemory, int screenWidth, int screenHeight, 
                             (float)screenCenter.y + posInElevator.y,layer, mood);
 			Vector2i digitMinPos = sum(sum(screenCenter, posInElevator), floorIndicatorOffset); 
 			Vector2i digitMaxPos = sum(digitMinPos, Vector2i{6, 12} ); 
-			drawRectangle(bitMapMemory, screenWidth, screenHeight, digitMinPos.x - 1, digitMinPos.y -1, digitMaxPos.x +1, digitMaxPos.y +1, GREY); 
-                        drawNumber(state->guys[j].desiredFloor,renders, ARRAY_SIZE(renders),&state->images.numbersFont3px, (float)digitMinPos.x, (float)digitMinPos.y,layer,  2);
+                        drawImage(renders, ARRAY_SIZE(renders), &state->images.rectangle, digitMinPos.x - 1.0f, digitMinPos.y -1.0f, layer - 1);
+			drawNumber(state->guys[j].desiredFloor,renders, ARRAY_SIZE(renders),&state->images.numbersFont3px, (float)digitMinPos.x, (float)digitMinPos.y,layer,  2);
                     }
                     else {
 			if ((state->guys[j].currentFloor * FLOOR_SEPARATION >= state->elevatorPosY - FLOOR_SEPARATION / 2) && // If they're on the floor

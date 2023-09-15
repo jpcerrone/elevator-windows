@@ -18,11 +18,11 @@ const static int REQUIRED_SCORE = 3000;
 static const char SCORE_PATH[MAX_PATH] = "maxScore";// MAX_PATH might be windows only
 
 static const Vector2i elevatorSpotsPos[ELEVATOR_SPOTS] = {
-    {-2, -29}, // TODO: these were done by eye, y is fine
-    {-21, -29},
-    {-30, -37},
-    {7, -37},
-    { -9, -37},
+    {-1, -30},
+    {-22, -30},
+    {-31, -37},
+    {11, -37},
+    { -10, -37},
 };
 
 static const float SPAWN_TIMES[13] = { 8, 6.5f, 5.0f, 5.5f, 4.0f, 3.6f, 3.2f, 3, 2.9f, 2.8f, 2.7f, 2.6f, 2.5f };
@@ -121,6 +121,7 @@ struct GameState {
         Image numbersFont4px;
 	Image uiLabels;
 	Image titleLabels;
+	Image rectangle;
     };
     images_t images;
 

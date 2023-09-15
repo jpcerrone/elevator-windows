@@ -98,7 +98,7 @@ static AudioState_t AudioState;
 void initWASAPI()
 {
     int framesOfLatency = 2; // 1 frame of latency seems to not be possible.
-    int bufferSizeInSeconds = (int)(REFTIMES_PER_SEC/ (desiredFPS / (float)framesOfLatency)); // Actually these are 100 nanosecond units
+    int bufferSize= (int)(REFTIMES_PER_SEC/ (desiredFPS / (float)framesOfLatency)); // These are 100 nanosecond units, not seconds
 
     HRESULT hr;
     IMMDeviceEnumerator *enumerator;
@@ -127,7 +127,7 @@ void initWASAPI()
     WAVEFORMATEX* closestMatch;
     hr = AudioState.audioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, AudioState.myFormat, &closestMatch);
 
-    hr = AudioState.audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferSizeInSeconds, 0, AudioState.myFormat, NULL);
+    hr = AudioState.audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, bufferSize, 0, AudioState.myFormat, NULL);
     Assert(SUCCEEDED(hr));
 
     hr = AudioState.audioClient->GetBufferSize(&AudioState.bufferFrameCount);
