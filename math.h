@@ -1,5 +1,16 @@
 #pragma once
 
+int roundFloat(float value) {
+    if(value < 0){
+	return (int)(value - 0.5f);
+    }
+    return (int)(value + 0.5f);
+}
+
+uint32_t roundUFloat(float value) {
+    return (uint32_t)(value + 0.5f);
+}
+
 float clampPos(float value) {
     if (value < 0) {
         return 0;

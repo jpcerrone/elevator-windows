@@ -60,6 +60,11 @@ struct floatingNumber{
 	    Vector2i startingPosOffset;
 };
 
+struct Timer{
+	bool active;
+	float time;
+};
+
 struct GameState {
     bool isInitialized;
     Screen currentScreen;
@@ -74,14 +79,15 @@ struct GameState {
     bool moving;
     int currentLevel;
 
-    float spawnTimer;
-    float doorTimer;
-    float dropOffTimer;
-    float transitionInTimer;
-    float transitionOutTimer;
-    float scoreTimer;
-    float flashTextTimer;
-    float circleFocusTimer;
+    Timer spawnTimer; // TODO migrate to Timer struct
+    Timer doorTimer;
+    Timer dropOffTimer;
+    Timer transitionToBlackTimer;
+    Timer transitionFromBlackTimer;
+    Timer scoreTimer;
+    Timer flashTextTimer;
+    Timer circleFocusTimer;
+
     Vector2i circleSpot;
     bool failSoundPlaying;
 
@@ -95,7 +101,7 @@ struct GameState {
     
     readFile_t* readFileFunction;
     writeScoreToFile_t* writeScoreFunction;
-    //freeFileMemory_t* freeFileMemory;
+  //freeFileMemory_t* freeFileMemory;
 
     struct images_t {
         Image ui;
